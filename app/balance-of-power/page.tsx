@@ -265,8 +265,8 @@ function SupermajorityHero({
     const outcomeLabel  = repHasSuper
       ? "SUPERMAJORITY HELD"
       : seatsShort === 1
-        ? "BROKEN — 1 SEAT FLIPPED"
-        : `BROKEN — ${seatsShort} SEATS FLIPPED`;
+        ? "SUPERMAJORITY BROKEN — 1 SEAT FLIPPED"
+        : `SUPERMAJORITY BROKEN — ${seatsShort} SEATS FLIPPED`;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -297,7 +297,7 @@ function SupermajorityHero({
               letterSpacing: "0.05em",
               whiteSpace: "nowrap",
             }}>
-              {stats.cfg.supermajority} seats needed
+              {stats.cfg.supermajority} = Supermajority
             </div>
           </div>
           <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
@@ -348,8 +348,8 @@ function SupermajorityHero({
               Supermajority Watch
             </h1>
           </div>
-          <ChamberBar label="House Control" stats={house} chamberKey="house" />
-          <ChamberBar label="Senate Control" stats={senate} chamberKey="senate" />
+          <ChamberBar label="House" stats={house} chamberKey="house" />
+          <ChamberBar label="Senate" stats={senate} chamberKey="senate" />
         </div>
 
         {/* Status card */}
