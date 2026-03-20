@@ -271,25 +271,19 @@ function SupermajorityHero({
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", alignSelf: "flex-start", transition: "background 0.15s" }}>
-            <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>{label}</span>
-            <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
-          </a>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontSize: 15, color: C.outline, fontWeight: 500 }}>
-              DEM {stats.dem}&nbsp;&nbsp;|&nbsp;&nbsp;REP {stats.rep}
-            </span>
+            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", transition: "background 0.15s" }}>
+              <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>{label}</span>
+              <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
+            </a>
             <span style={{ fontSize: 11, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
               {outcomeLabel}
-            </span>
-            <span style={{ fontSize: 12, color: C.outline, fontWeight: 500 }}>
-              {stats.cfg.supermajority} seats needed
             </span>
           </div>
         </div>
 
         {/* Bar */}
-        <div style={{ position: "relative", paddingBottom: 14 }}>
+        <div style={{ position: "relative" }}>
           {/* Threshold label */}
           <div style={{ position: "relative", height: 16, marginBottom: 2 }}>
             <div style={{
@@ -303,10 +297,10 @@ function SupermajorityHero({
               letterSpacing: "0.05em",
               whiteSpace: "nowrap",
             }}>
-              Supermajority
+              {stats.cfg.supermajority} seats needed
             </div>
           </div>
-          <div style={{ position: "relative", height: 24, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
+          <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
             {/* DEM from left */}
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${stats.demPct}%`, background: C.primaryMid }} />
             {/* If DEM broke supermajority, highlight the gap zone in green */}
@@ -326,24 +320,15 @@ function SupermajorityHero({
               zIndex: 10,
               boxShadow: `0 0 6px ${outcomeColor}80`,
             }} />
-          </div>
-          {/* Below-bar annotation if broken */}
-          {!repHasSuper && gapWidth > 0 && (
-            <div style={{
-              position: "absolute",
-              left: `${gapLeft + gapWidth / 2}%`,
-              transform: "translateX(-50%)",
-              top: "calc(100% + 3px)",
-              fontSize: 8,
-              fontWeight: 800,
-              color: "#16a34a",
-              whiteSpace: "nowrap",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}>
-              ↑ FLIPPED
+            {/* DEM count inside bar */}
+            <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+              DEM {stats.dem}
             </div>
-          )}
+            {/* REP count inside bar */}
+            <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+              REP {stats.rep}
+            </div>
+          </div>
         </div>
       </div>
     );

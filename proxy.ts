@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const secret = process.env.DASHBOARD_SECRET;
 
   // If no secret is configured, allow all requests (dev fallback)
