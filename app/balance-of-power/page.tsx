@@ -648,8 +648,8 @@ export default function BalanceOfPowerPage() {
           display: grid;
           gap: 16px;
         }
-        .race-grid-house   { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-        .race-grid-senate  { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        .race-grid-house,
+        .race-grid-senate  { grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); }
 
         /* Card hover */
         .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
