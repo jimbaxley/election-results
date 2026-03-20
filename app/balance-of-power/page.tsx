@@ -50,12 +50,6 @@ type SeatVisual = {
   seatStatus: SeatStatus;
 };
 
-const STATUS_ORDER: Record<SeatStatus, number> = {
-  FLIPPED: 0,
-  LEADING_FLIP: 1,
-  HOLD: 2,
-  OPEN: 3,
-};
 
 function extractDistrictNumber(label: string): number {
   const match = label.match(/DISTRICT\s+0*([0-9]+)/i);
@@ -69,14 +63,6 @@ function isBattlegroundSeat(seat: SeatVisual): boolean {
   return seat.margin !== null && seat.margin < COMPETITIVE_THRESHOLD;
 }
 
-function sortSeatsForGrouping(a: SeatVisual, b: SeatVisual): number {
-  const statusDiff = STATUS_ORDER[a.seatStatus] - STATUS_ORDER[b.seatStatus];
-  if (statusDiff !== 0) return statusDiff;
-  const mA = a.margin ?? Infinity;
-  const mB = b.margin ?? Infinity;
-  if (mA !== mB) return mA - mB;
-  return extractDistrictNumber(a.districtLabel) - extractDistrictNumber(b.districtLabel);
-}
 
 function formatSeatLabel(chamber: "senate" | "house", label: string): string {
   const match = label.match(/DISTRICT\s+0*([0-9]+)/i);
@@ -429,7 +415,7 @@ function BattlegroundSection({
   const config = CHAMBER_CONFIG[chamber];
   const repLeads = seats.filter((s) => s.leaderParty === "REP");
 
-  const allInPlay = seats.filter(isBattlegroundSeat).sort(sortSeatsForGrouping);
+  const allInPlay = seats.filter(isBattlegroundSeat).sort((a, b) => extractDistrictNumber(a.districtLabel) - extractDistrictNumber(b.districtLabel));
 
   const repToLoseSuper =
     repLeads.length >= config.supermajority
@@ -537,8 +523,8 @@ function BattlegroundSection({
                     {sb.label}
                   </span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
-                  {Math.round(seat.pctReporting * 100)}% rptg
+                <span style={{ fontSize: 10, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
+                  {Math.round(seat.pctReporting * 100)}% Reporting
                 </span>
               </div>
 
@@ -577,8 +563,8 @@ function BattlegroundSection({
 
                 {/* Vote margin — always visible */}
                 {voteDiff && (
-                  <div style={{ fontSize: 11, color: C.outline, fontWeight: 600, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
-                    {voteDiff} votes | Margin: {(seat.margin! * 100).toFixed(2)}%
+                  <div style={{ fontSize: 14, color: C.outline, fontWeight: 400, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
+                    {voteDiff} votes | {(seat.margin! * 100).toFixed(2)}%
                   </div>
                 )}
               </div>
