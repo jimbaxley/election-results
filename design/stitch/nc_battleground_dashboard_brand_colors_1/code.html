@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Battleground Dashboard | Team Up NC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;family=Public_Sans:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-lowest": "#ffffff",
+              "on-background": "#1c1b1c",
+              "surface-tint": "#445b9f",
+              "surface-bright": "#fcf8f8",
+              "on-surface-variant": "#444650",
+              "on-surface": "#1c1b1c",
+              "error": "#ba1a1a",
+              "primary-container": "#233c7e",
+              "tertiary": "#002b4f",
+              "on-primary": "#ffffff",
+              "primary-fixed": "#dbe1ff",
+              "secondary": "#A6266E",
+              "outline-variant": "#c5c6d2",
+              "on-secondary-container": "#6f0046",
+              "on-secondary": "#ffffff",
+              "on-tertiary-fixed-variant": "#004880",
+              "primary": "#042567",
+              "on-error-container": "#93000a",
+              "secondary-fixed": "#ffd8e6",
+              "background": "#fcf8f8",
+              "outline": "#757681",
+              "surface-container": "#f1eded",
+              "inverse-surface": "#313030",
+              "on-tertiary-fixed": "#001c38",
+              "surface-variant": "#e5e2e1",
+              "surface-container-highest": "#e5e2e1",
+              "secondary-fixed-dim": "#ffafd1",
+              "on-secondary-fixed": "#3d0024",
+              "on-primary-fixed": "#00174b",
+              "tertiary-container": "#004174",
+              "surface-container-low": "#f7f3f2",
+              "inverse-on-surface": "#f4f0ef",
+              "on-tertiary-container": "#6aafff",
+              "error-container": "#ffdad6",
+              "secondary-container": "#fd6eb5",
+              "surface-container-high": "#ebe7e7",
+              "primary-fixed-dim": "#b4c5ff",
+              "surface": "#fcf8f8",
+              "inverse-primary": "#b4c5ff",
+              "on-tertiary": "#ffffff",
+              "on-secondary-fixed-variant": "#8a0658",
+              "tertiary-fixed-dim": "#a1c9ff",
+              "on-primary-container": "#92a9f2",
+              "on-error": "#ffffff",
+              "on-primary-fixed-variant": "#2b4385",
+              "tertiary-fixed": "#d2e4ff",
+              "surface-dim": "#ddd9d9"
+            },
+            fontFamily: {
+              "headline": ["Montserrat"],
+              "body": ["Montserrat"],
+              "label": ["Montserrat"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body">
+<!-- TopNavBar -->
+<header class="bg-[#233C7E] dark:bg-slate-950 font-['Public_Sans'] antialiased docked full-width top-0 sticky border-b border-[#233C7E]/20 shadow-md z-50 flex justify-between items-center w-full px-6 py-3">
+<div class="text-xl font-bold text-white tracking-tight">Team Up NC</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-200 hover:text-white transition-colors" href="#">House Watch</a>
+<a class="text-slate-200 hover:text-white transition-colors" href="#">Senate Watch</a>
+<a class="text-slate-200 hover:text-white transition-colors" href="#">Supreme Court</a>
+<a class="text-white border-b-2 border-[#A6266E] pb-1 font-bold" href="#">Battlegrounds</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 text-white hover:bg-white/10 dark:hover:bg-slate-800 rounded-md transition-all active:opacity-80 active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-white hover:bg-white/10 dark:hover:bg-slate-800 rounded-md transition-all active:opacity-80 active:scale-95">
+<span class="material-symbols-outlined">share</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-variant">
+<img alt="User profile" data-alt="User profile avatar photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL92WwMHDLn4E6yn2jngg6syfRrcghPUFbV-waAorfuUIaQKZuLkYicVrIM8H0XA9qqrTlWnN_A_JeHx5x_QE6pRNoTuIszrGVGeqcj0-Jc6kmYJ902vYgyxhqbM6KJnfQddnI0P8qXUGm_qKkn1Tn6BoP1JKB22fppAh5fDPv0zSNrdF-AYpkMgigWn-qUt7TgLsTVlZd35Ieqlo4MG5Eh_qOrU9aNOtHJOaFaxbi7beVhzgXTi-0Zs10SU7IPyRUR3hpsDnWXhnr"/>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 py-8">
+<!-- Hero: Supermajority Watch -->
+<section class="mb-12">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+<!-- Progress Bars Column -->
+<div class="lg:col-span-2 space-y-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/30">
+<h1 class="text-3xl font-extrabold text-primary mb-6 tracking-tight uppercase">Supermajority Watch</h1>
+<!-- House Control -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="font-bold text-lg">NC House Control</h3>
+<div class="text-sm text-outline font-medium">DEM 49 | REP 71</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold px-2 py-1 bg-secondary/10 text-secondary rounded">72 Seats for Supermajority</span>
+</div>
+</div>
+<div class="relative h-6 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="absolute left-0 top-0 h-full bg-[#233C7E]" style="width: 40.8%;"></div>
+<div class="absolute right-0 top-0 h-full bg-[#A6266E]" style="width: 59.2%;"></div>
+<!-- Threshold Marker -->
+<div class="absolute top-0 bottom-0 w-1 bg-on-background/30 z-10" style="left: 60%;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-outline uppercase">Threshold</div>
+</div>
+</div>
+</div>
+<!-- Senate Control -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="font-bold text-lg">NC Senate Control</h3>
+<div class="text-sm text-outline font-medium">DEM 20 | REP 30</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold px-2 py-1 bg-secondary/10 text-secondary rounded">30 Seats for Supermajority</span>
+</div>
+</div>
+<div class="relative h-6 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="absolute left-0 top-0 h-full bg-[#233C7E]" style="width: 40%;"></div>
+<div class="absolute right-0 top-0 h-full bg-[#A6266E]" style="width: 60%;"></div>
+<!-- Threshold Marker -->
+<div class="absolute top-0 bottom-0 w-1 bg-on-background/30 z-10" style="left: 60%;">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-outline uppercase">Threshold</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Status Card -->
+<div class="bg-primary text-white p-8 rounded-xl flex flex-col justify-center relative overflow-hidden shadow-xl">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-9xl">analytics</span>
+</div>
+<div class="relative z-10">
+<span class="inline-block px-3 py-1 bg-secondary text-white text-xs font-bold rounded-full mb-4">LIVE ANALYSIS</span>
+<h2 class="text-4xl font-black mb-4 leading-tight">Supermajority Status: <br/><span class="text-secondary-fixed">IN JEOPARDY</span></h2>
+<p class="text-lg opacity-90 leading-relaxed font-medium">
+                        Democrats need <span class="font-bold text-white underline decoration-secondary decoration-2 underline-offset-4">3 flips</span> to break the House supermajority and restore executive veto power.
+                    </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Key Battlegrounds Sections -->
+<div class="space-y-16">
+<!-- House Battlegrounds -->
+<section>
+<div class="flex justify-between items-end mb-8 border-l-4 border-secondary pl-4">
+<div>
+<h2 class="text-2xl font-extrabold text-primary">House Battlegrounds</h2>
+<p class="text-outline text-sm font-medium">Critical flips needed for Democratic break-through</p>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-secondary">NET CHANGE NEEDED: +3</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Race Card HD-105 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center border-b border-outline-variant/20">
+<span class="font-bold text-primary">HD-105</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">82% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat Candidate" data-alt="Professional headshot of a female political candidate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUqzO0hLdXK6d30-IQ8hJaGc-KQVyoSf6wy8YIyuSriXVaMYLUhnZBd4f5ACkeKqxxV0ollwxinuN6ukA1cdiA6YcjUeEUgt8dVYE7S0TTPKnAf-OpQjbAjAeRuJ01AM5eYHxtjJdkFd_rZV-K9AfBXSON5qQdy2Zs69uB4_pP2CKYFQ4lJh_H1ty84fgIOgR6J9ueT-0hdxuI-JpAfblU__G1d_UonqOgWZdG4hhN02BKdqjOG8uSwLhcvuP3JZMIP2sb-nX0oZQk"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Nicole Sidman (D)</span>
+<span class="text-[#233C7E]">49.2%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 49.2%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican Candidate" data-alt="Professional headshot of a male political candidate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsseAmj94joc3QSMgnp6N6eY7-toFyNNLXBTNN_BFyo_ApQkIrxvYlp_vv0msnbG0i4G-oT-_uIbPGaeE3EsYhqGrBLWA0jnv5FrzZFL3tHbUvXmW-EAkszseWAS6eh0JLoQB-hoai_S0u2EZwFRYf7MGsJAi-F2w_HqV47Hl2J-MVAK2OasFs4cvkShAuYCCPSM8Rj19sdjtpIbZyFor2oh9P-Qi56Gyb6t7cLdHtkfeaBoTF_eIPMbG6ij18qUfpqcm4QdUgO07h"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Tricia Cotham (R)</span>
+<span class="text-[#A6266E]">50.8%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 50.8%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                        Margin: 1.6% • 2022 Margin: R+3.2
+                    </div>
+</div>
+<!-- Card HD-9 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center border-b border-outline-variant/20">
+<span class="font-bold text-primary">HD-9</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">64% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat Candidate" data-alt="Candidate portrait photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfLnUQDphD8OJM-rqPW0EfGNF2vy4VvDjPqeUZt4Ld-HamI8pSD6oOD5mkZNQXPZrj2_knfVO2N7tLU7fe78rc-qAsiCqt07UT99UA1lGPjagX-ajiZ33KCwksMwQ07jxIbHDSeikpJw2wRIhfOUW3D6cinedqmHI967nwQBbbY26hqdpfkuez8rTX3gz6v4jDz35y9m8RvZdBGoTMXjkDZO1iWC74dYOPN-BuqNxBsVduxIo5rFIhyvt8TYT_dTmZa7-Nr0kFMtcT"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Candidate (D)</span>
+<span class="text-[#233C7E]">51.5%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 51.5%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican Candidate" data-alt="Political candidate headshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo0TcNiKIR3Hu988eCBrerm07yinKSSdLl10l-i49zk6lH72KwFkoZUqwS5JIKo-XBb_8J3WEo5sQE5rRINUlLn8i8ET9Md_XrnautrAFQc_V2CjelIZV43j4dkCcLMciOO8-pz6lttDqcPyDw2jZaOUbpmoOBkYa4XnQpGX0Jqs4t2r-fw9wnjdSQ9rWaf4niftMhyYz50ZXm3F_RCs2XfOq2uNy6InE0lQUcPB60G9dzCh3vTeZaqD4KDLlbF3dNLO8rhd0NH4iQ"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Incumbent (R)</span>
+<span class="text-[#A6266E]">48.5%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 48.5%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                        Lead: 3.0% • Flip Opportunity: HIGH
+                    </div>
+</div>
+<!-- Card HD-32 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center border-b border-outline-variant/20">
+<span class="font-bold text-primary">HD-32</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">45% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat Candidate" data-alt="Female candidate portrait photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGqIgdPLI3LJX5j-02sb7uz-pi_bPhJDXUX7pfstuvqAZo4BwxyYzYL_aBpN7KgO2yr2o7pGuACHwBDx5daG6KQbL9O67QEm42NG9G3r2_Tt72pzmwII4ug-CYOHd2mCEvjHMe9vDYmSxB1pxTlWMJwK5z5-YvSFsdhnovb3SeAIW7FVuRELO5ETNuwNj8MP-ARMUCaW80rQ0Qg3UpQyvwqtl_OB96_HJWW4w7Naxt2ypxit5B2DVTSZ-uatnq5ClA1RggXZTey5Sv"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Candidate (D)</span>
+<span class="text-[#233C7E]">47.8%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 47.8%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican Candidate" data-alt="Male candidate portrait photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgxONuKEJagu2IxibN5JFSa1dbzpN3BXT1kvehK_4otXbQdsvakB9JGnaa4Qg9oT-BgcmXFgKg7V4MGA1_DIy8_pIaQqXeL5X1_GN3qgqEmI0xpkSCiFtN0TIjAwBWt8ErvxNiglFffZwr2XjO-iWkwn0G6w1yvLf5AJYC0eWmE8VDs-itdoiqMW4DuzEu1lI2uherTV3DU1pU6PaXMQPtHb0_mrxMU_yBLbkqgu9Dlj8rdfvkR3lE-YzNGhdJ3ZDGlx4tDwIIg3vY"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Incumbent (R)</span>
+<span class="text-[#A6266E]">52.2%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 52.2%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                        Early Vote: D+8 • Day-Of Trend: R+12
+                    </div>
+</div>
+<!-- Card HD-73 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center border-b border-outline-variant/20">
+<span class="font-bold text-primary">HD-73</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">91% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat Candidate" data-alt="Candidate for state house" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBT3tSTFL9L4GbfKUbc2O9nMw7FMAmK1zS7M5pjbJ5umit8SBMKFZaR7nYtfIJXXKdyAQObceWgIlHZSNnWuNF0BYq-nJxlEDw3u9uP7-YC6RaXnLXomFKZNgosHne29ucBUNUT50ojxZurzYLaqjl54AF77FdRQG_KVNpx2OmECj9ltpmro6JWtY8ynVgIMl7GaQpCpZmxDm9P5cwghrB4-GyHM_uuNqAe0DkpJ6tc3ko-wRo9TvVCJ7M1y7K9vdb1fOR7uLpfqKiH"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Candidate (D)</span>
+<span class="text-[#233C7E]">50.1%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 50.1%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican Candidate" data-alt="Political candidate portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVy6LfREegGka4TOHjIMcDuQc1U9NSpnSbr8XZqBT1TIMUrqS_Nb3CKBYubkH_lGcE5nDywISCLtWlBJUFVHyPl_vfDWvGXRVpZ0xq_vNyGr9kt96aVDrqFGRIW91ktT5wU-5rATyK1MovIwNl-IqMexGYOxP7-FhbGRBuEtBCMfNTR37b5sW16D9jLr55gZ08PISAMUJIkWfAeGWb6hkmLVuKxknecw-mgkBFwv_hs36mGgw8ZJVvC2LurqKn9KGNhxf1r25C0fij"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs font-bold">
+<span>Incumbent (R)</span>
+<span class="text-[#A6266E]">49.9%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 49.9%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                        TOO CLOSE TO CALL • 150 VOTE MARGIN
+                    </div>
+</div>
+</div>
+</section>
+<!-- Senate Battlegrounds & Supreme Court Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+<!-- Senate Battlegrounds -->
+<div class="lg:col-span-2">
+<div class="flex justify-between items-end mb-8 border-l-4 border-secondary pl-4">
+<div>
+<h2 class="text-2xl font-extrabold text-primary">Senate Battlegrounds</h2>
+<p class="text-outline text-sm font-medium">Critical seats to break Senate control</p>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-secondary">NET CHANGE NEEDED: +1</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- SD-18 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center">
+<span class="font-bold text-primary">SD-18</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">76% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat" data-alt="Candidate profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2KD0zifmFpR2buu6Ezhsvgqd2GW1rLLlL5izVNo0-PW87xcBm0lXzHMSZZFnuHTpKTL6fsGfsSItV-Y8DLdFiiOU_xJYj4u7itvNHgFVpImwjTke23erTBaaegaNjg0GStRFFrhBQiE9Xyw1AJCj725mJsSALlzQ-1nJAICDKnzDIUYaukn2Dt7ZRHbva6eb7SwNqonI1aap6swZp0xO9IbHD4BnS1K40uwKuOi2ekdDVFP7JWpaxcONNtCmMy5srMUDX3J2wTNA8"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between font-bold">
+<span>Terence Everitt (D)</span>
+<span class="text-[#233C7E]">52.4%</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 52.4%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican" data-alt="Candidate headshot photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp_Hsqfaj_o06yVtwPGeKGpykUFd90ARb2zNdTYGptJxnKFg5s6VPVNZkon_tsNFA_ilC1I1nN71M-CfTQ5Q-qscXMKozuArSq2fmMl4xG-JuQfBKxzzRWgwt1kpXVQZ9MiRO--z3XzKTX1oUVgZQnQlZj3Cq6Fely8KiJspYJbAi-y9__CVc3G1xW0IqdSdJboKCwkwqRTtFpctUZVX6mKxCLhC-ibGAKcy4c96WRFKa4Kbbsul7MYmYDHuY1DhQQxqcC65houfbJ"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between font-bold">
+<span>Ashlee Adams (R)</span>
+<span class="text-[#A6266E]">47.6%</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 47.6%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            KEY TURNOUT AREA: Wake County
+                        </div>
+</div>
+<!-- SD-13 -->
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
+<div class="p-4 bg-surface-container-low flex justify-between items-center">
+<span class="font-bold text-primary">SD-13</span>
+<span class="text-[10px] font-bold px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">32% REPORTING</span>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full border-2 border-[#233C7E] overflow-hidden">
+<img alt="Democrat" data-alt="Political candidate portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcLtcuEURyvMpretUVCBeBTdcIH26Ze_60jSdeO3hmxiKhsVXu0qWGJcAArIXhzFDuPQopmTAU27TKcnL_9BLQ3KYTukPBICclNgSLx3O0mUh_UN8lT2k77oImxKw0gqbnvFp9cfeddS7X2aKB1RyWerKCFECwtd7-Y5IbK_6VjeDeTisvYyObV25ZdlJ_Bvn-Wxbx97Kz9pKLvoLpLUsu1XcRTjlb5k2aLAQJyA0o7wE-t5em-LWXbYrWg1jIyIJk4g1hY_is81CX"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between font-bold">
+<span>Lisa Grafstein (D)</span>
+<span class="text-[#233C7E]">54.1%</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#233C7E] rounded-full" style="width: 54.1%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full border-2 border-[#A6266E] overflow-hidden">
+<img alt="Republican" data-alt="Male headshot photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr5XbDNMvB9eHfq79tx0_rIC5fjybyNcrJnrCGqc4W2oOAeMwV8EwCqMMle94yfY9ECI483jtE0V1iv4qghqm38P2O_72kSlmuTQKwWSWdaKxk9m-rH2aP-Tg6PJ29_VTGKd45R7viPKAuk_r0e_Vevn3kJ8cxiacRpHgQh-YedK3yhsdANH_xfQ9C29v3FbPOR_E8DzoanP3jH3W4v3utv8RSelsEg-pssgWY7wSyHix5SUKcYMuDwyaJwwT4pwcyo6ChdQ0wn62x"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between font-bold">
+<span>Scott Lassiter (R)</span>
+<span class="text-[#A6266E]">45.9%</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full mt-1">
+<div class="h-full bg-[#A6266E] rounded-full" style="width: 45.9%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 py-3 bg-primary/5 text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            LEANING DEMOCRATIC
+                        </div>
+</div>
+</div>
+</div>
+<!-- Supreme Court Race -->
+<div>
+<div class="mb-8 border-l-4 border-secondary pl-4">
+<h2 class="text-2xl font-extrabold text-primary">Supreme Court Race</h2>
+<p class="text-outline text-sm font-medium">Protecting the Judicial Branch</p>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border-2 border-secondary overflow-hidden shadow-lg relative group">
+<div class="absolute top-4 right-4 z-10">
+<span class="bg-secondary text-white text-[10px] font-black px-3 py-1 rounded shadow-sm">KEY SEAT</span>
+</div>
+<div class="p-6">
+<div class="space-y-6">
+<div class="text-center pb-4 border-b border-outline-variant/30">
+<span class="text-[10px] font-bold text-green-700 uppercase tracking-widest">74% Total Reporting</span>
+</div>
+<div class="flex flex-col items-center gap-4">
+<div class="relative">
+<div class="w-24 h-24 rounded-full border-4 border-[#233C7E] overflow-hidden">
+<img alt="Allison Riggs" data-alt="Professional photo of Allison Riggs" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCToPSZcPoS_wvhj4mkzXaRk-fSHHD5kEbKSNPN7jJzMnyBn57-Tk1Ild7uzn_odLc1-IrUrkQzc6GB5M_1UCNsOuh7OmxYLbOuHJRg-LHcOL5TAhsEySdxR7QqrDxiI9dPHqVYor9OOJio-YXVch17st9BUoXYCyNzzdK9DC9YX3_0n1JD6ILPbg5cMbnrT9oFw_g5hpTYxGyssF293IUATtYxvXfc2HPTPMHYsqO8MThVBYF_PqzuJn-bAr708EizYoancoAortgI"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#233C7E] text-white text-[10px] px-2 py-0.5 rounded font-bold">DEM</div>
+</div>
+<div class="text-center">
+<h4 class="font-black text-lg text-primary">Allison Riggs</h4>
+<div class="text-3xl font-black text-[#233C7E]">49.9%</div>
+</div>
+</div>
+<div class="relative h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="absolute h-full bg-[#233C7E]" style="width: 49.9%"></div>
+<div class="absolute h-full bg-[#A6266E] right-0" style="width: 50.1%"></div>
+</div>
+<div class="flex flex-col items-center gap-4">
+<div class="text-center">
+<div class="text-3xl font-black text-[#A6266E]">50.1%</div>
+<h4 class="font-black text-lg text-primary">Jefferson Griffin</h4>
+</div>
+<div class="relative">
+<div class="w-24 h-24 rounded-full border-4 border-[#A6266E] overflow-hidden">
+<img alt="Jefferson Griffin" data-alt="Professional photo of Jefferson Griffin" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUi1eLy3WJBF2zIoui9uRl3svulOBL_FD-Ke-4WlX78d-PdxwN-XmXw4KgybVmbMI5aWBeGFjCV9q2bxS0Hnbv3uSnhJmCe6d8Smi5HfAHc5bNHf8ke8-zxJBV7hdGYe12cFYuR2w_wZ9Fb2N4T73R7VJGiaKGWYYDa9zdj_EFpRpTYJ-Ca5-l4NFXRENuvbZy41AyC2DHFMulgUibb7zvIlvm8uNmN6pGS_L2My_dVesUlOqqD3FjIzyOG3aExVVzaRCZAVEj4JQY"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#A6266E] text-white text-[10px] px-2 py-0.5 rounded font-bold">REP</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-4 bg-secondary text-white text-center font-bold text-xs">
+                        MARGIN: ~14,000 VOTES
+                    </div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-100 dark:bg-slate-900 w-full py-8 px-6 flex flex-col md:flex-row justify-between items-center gap-4 mt-auto border-t border-slate-200 dark:border-slate-800 font-['Public_Sans'] text-xs text-[#797777]">
+<div class="flex flex-col gap-2">
+<div class="font-bold text-[#233C7E] text-lg">Team Up NC</div>
+<p class="max-w-md">© 2024 Team Up NC. Paid for by Team Up NC PAC. Not authorized by any candidate or candidate's committee.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-[#797777] hover:text-[#233C7E] hover:underline transition-all" href="#">Legal Disclaimer</a>
+<a class="text-[#797777] hover:text-[#233C7E] hover:underline transition-all" href="#">Privacy Policy</a>
+<a class="text-[#797777] hover:text-[#233C7E] hover:underline transition-all" href="#">Data Sources</a>
+<a class="text-[#797777] hover:text-[#233C7E] hover:underline transition-all" href="#">Contact</a>
+</div>
+</footer>
+</body></html>

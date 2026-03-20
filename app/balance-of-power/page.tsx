@@ -250,7 +250,7 @@ function SupermajorityHero({
       "Neither party currently holds a supermajority in either chamber.";
   }
 
-  function ChamberBar({ label, stats }: { label: string; stats: ReturnType<typeof chamberStats> }) {
+  function ChamberBar({ label, stats, chamberKey }: { label: string; stats: ReturnType<typeof chamberStats>; chamberKey: "house" | "senate" }) {
     const repHasSuper = stats.rep >= stats.cfg.supermajority;
     const seatsShort  = repHasSuper ? 0 : stats.cfg.supermajority - stats.rep;
     // The bar spans 0–total. DEM fills from left, REP from right.
@@ -270,18 +270,23 @@ function SupermajorityHero({
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.onBg }}>{label}</div>
-            <div style={{ fontSize: 13, color: C.outline, fontWeight: 500, marginTop: 1 }}>
+            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none" }}>
+              <div style={{ fontWeight: 700, fontSize: 18, color: C.primary, display: "flex", alignItems: "center", gap: 6 }}>
+                {label}
+                <span style={{ fontSize: 12, color: C.secondary, fontWeight: 600 }}>↓ races</span>
+              </div>
+            </a>
+            <div style={{ fontSize: 15, color: C.outline, fontWeight: 500, marginTop: 3 }}>
               DEM {stats.dem}&nbsp;&nbsp;|&nbsp;&nbsp;REP {stats.rep}
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "3px 8px", letterSpacing: "0.04em" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
               {outcomeLabel}
             </span>
-            <span style={{ fontSize: 10, color: C.outline, fontWeight: 500 }}>
+            <span style={{ fontSize: 12, color: C.outline, fontWeight: 500 }}>
               {stats.cfg.supermajority} seats needed
             </span>
           </div>
@@ -362,8 +367,8 @@ function SupermajorityHero({
               Supermajority Watch
             </h1>
           </div>
-          <ChamberBar label="NC House Control" stats={house} />
-          <ChamberBar label="NC Senate Control" stats={senate} />
+          <ChamberBar label="House Control" stats={house} chamberKey="house" />
+          <ChamberBar label="Senate Control" stats={senate} chamberKey="senate" />
         </div>
 
         {/* Status card */}
@@ -471,14 +476,14 @@ function BattlegroundSection({
   if (allInPlay.length === 0) return null;
 
   return (
-    <section style={{ marginBottom: 48 }}>
+    <section id={`${chamber}-battleground`} style={{ marginBottom: 48 }}>
       {/* Section header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, borderLeft: `4px solid ${C.secondary}`, paddingLeft: 14 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>
             {chamberLabel} Battlegrounds
           </h2>
-          <p style={{ margin: "2px 0 0", fontSize: 13, color: C.outline, fontWeight: 500 }}>
+          <p style={{ margin: "2px 0 0", fontSize: 14, color: C.outline, fontWeight: 500 }}>
             {subtitle}
           </p>
         </div>
@@ -618,6 +623,13 @@ export default function BalanceOfPowerPage() {
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -679,6 +691,15 @@ export default function BalanceOfPowerPage() {
         .race-card:hover .card-footer { opacity: 1; }
       `}</style>
 
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          style={{ position: "fixed", bottom: 24, right: 24, background: C.primary, color: "#fff", border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 18, cursor: "pointer", zIndex: 100, boxShadow: "0 4px 12px rgba(4,37,103,0.35)", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+          aria-label="Back to top"
+        >
+          ↑
+        </button>
+      )}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 48px" }}>
         {/* Page title row */}
         

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/jimbaxley/Library/CloudStorage/Dropbox/C2C/CODE/election-results -type f \\\\\\(-name *.css -o -name *.scss -o -name *.module.* \\\\\\))",
+      "Bash(curl -s \"https://er.ncsbe.gov/enr/20221108/data/results_0.txt\")",
+      "Bash(python3 -c \":*)",
+      "Bash(gh --version)",
+      "Bash(vercel --version)",
+      "Read(//usr/local/bin/**)",
+      "Bash(npx vercel:*)",
+      "Bash(npx gh:*)",
+      "Bash(gh auth:*)",
+      "Bash(printf \"your-secret-key-here\")"
+    ]
+  }
+}
