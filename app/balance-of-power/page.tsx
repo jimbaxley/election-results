@@ -270,19 +270,15 @@ function SupermajorityHero({
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none" }}>
-              <div style={{ fontWeight: 700, fontSize: 18, color: C.primary, display: "flex", alignItems: "center", gap: 6 }}>
-                {label}
-                <span style={{ fontSize: 12, color: C.secondary, fontWeight: 600 }}>↓ races</span>
-              </div>
-            </a>
-            <div style={{ fontSize: 15, color: C.outline, fontWeight: 500, marginTop: 3 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", alignSelf: "flex-start", transition: "background 0.15s" }}>
+            <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>{label}</span>
+            <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
+          </a>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 15, color: C.outline, fontWeight: 500 }}>
               DEM {stats.dem}&nbsp;&nbsp;|&nbsp;&nbsp;REP {stats.rep}
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            </span>
             <span style={{ fontSize: 11, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
               {outcomeLabel}
             </span>
