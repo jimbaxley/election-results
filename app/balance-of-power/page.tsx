@@ -564,7 +564,7 @@ function BattlegroundSection({
                 {/* Vote margin — always visible */}
                 {voteDiff && (
                   <div style={{ fontSize: 14, color: C.outline, fontWeight: 400, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
-                    {voteDiff} votes | {(seat.margin! * 100).toFixed(2)}%
+                   Margin: {voteDiff} votes | {(seat.margin! * 100).toFixed(2)}%
                   </div>
                 )}
               </div>
