@@ -8,6 +8,7 @@ export type PriorSeat = {
   winnerParty: string;
   /** Decimal margin of victory (e.g. 0.032). null = uncontested. */
   margin: number | null;
+  totalVotes: number;
 };
 
 /**
@@ -25,6 +26,7 @@ export function buildPriorLookup(
     lookup[race.cnm] = {
       winnerParty: winner.party,
       margin: race.margin,
+      totalVotes: race.totalVotes,
     };
   }
   return lookup;

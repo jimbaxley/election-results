@@ -54,6 +54,7 @@ type SeatVisual = {
   // Prior-election context
   incumbentParty: string | null;
   priorMargin: number | null;
+  priorTotalVotes: number | null;
   seatStatus: SeatStatus;
   hasFeaturedCandidate: boolean;
   allCandidates: { name: string; party: string; pct: number }[];
@@ -127,8 +128,9 @@ function toSeatVisual(
     margin:        race.margin,
     pctReporting:  race.precincts.pct,
     totalVotes:    race.totalVotes,
-    incumbentParty: prior?.winnerParty ?? null,
-    priorMargin:    prior?.margin ?? null,
+    incumbentParty:   prior?.winnerParty ?? null,
+    priorMargin:      prior?.margin ?? null,
+    priorTotalVotes:  prior?.totalVotes ?? null,
     seatStatus,
     hasFeaturedCandidate: race.candidates.some((c) => isFeaturedCandidate(formatName(c.name))),
     allCandidates: [...race.candidates]
@@ -582,12 +584,7 @@ function BattlegroundSection({
               : null;
 
           // Hover footer — show 2024 prior result in 2026 mode
-          const priorVoteDiff = seat.priorMargin !== null && seat.totalVotes > 0
-            ? Math.round(seat.priorMargin * seat.totalVotes).toLocaleString()
-            : null;
-          const footerText = source === "2026" && seat.priorMargin !== null
-            ? `2024: ${seat.incumbentParty ?? "?"} +${(seat.priorMargin * 100).toFixed(1)}%${priorVoteDiff ? ` (${priorVoteDiff} votes)` : ""}`
-            : "";
+          const footerText = source === "2026" && seat.priorMargin !== null;
 
           const leaderStyle = leaderCircleStyle(seat.seatStatus, seat.leaderParty, seat.margin, seat.pctReporting);
 
@@ -682,7 +679,10 @@ function BattlegroundSection({
                   <span style={{ color: seat.incumbentParty === "DEM" ? C.primaryMid : seat.incumbentParty === "REP" ? C.secondary : C.outline, fontWeight: 900 }}>
                     {seat.incumbentParty ?? "?"}
                   </span>
-                  {" "}{priorVoteDiff ? `+${priorVoteDiff} votes` : ""}{" "}· +{(seat.priorMargin! * 100).toFixed(1)}%
+                  {seat.priorTotalVotes && seat.priorMargin !== null
+                    ? ` +${Math.round(seat.priorMargin * seat.priorTotalVotes).toLocaleString()} votes · `
+                    : " · "}
+                  +{(seat.priorMargin! * 100).toFixed(1)}%
                 </div>
               )}
             </div>
