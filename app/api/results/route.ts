@@ -18,8 +18,11 @@ export async function GET(request: Request): Promise<Response> {
     let priorFile: string;
 
     if (source === "2026") {
-      // Mock 2026 preview data
-      const stagingPath = path.join(process.cwd(), "tests", "staging_2026.json");
+      // Mock 2026 preview data.
+      // Default to the clean (no-votes) file for production.
+      // Set STAGING_2026_FILE=staging_2026.json locally to test early-return data.
+      const stagingFile = process.env.STAGING_2026_FILE ?? "staging_2026_clean.json";
+      const stagingPath = path.join(process.cwd(), "tests", stagingFile);
       text = fs.readFileSync(stagingPath, "utf-8");
       priorFile = "prior_2024.json"; // compare 2026 against 2024 results
     } else {

@@ -24,6 +24,13 @@ const C = {
   outlineVariant: "#c5c6d2",   // subtle borders
 } as const;
 
+// ─── Jump-button sizing (adjust here to resize all four chamber/court buttons) ─
+const BTN = {
+  labelSize:   16,  // header label font size (px)
+  circleSize:  18,  // circle button diameter (px)
+  arrowSize:   10,  // ↓ arrow font size inside circle (px)
+} as const;
+
 type ApiResponse = {
   races: RaceSummary[];
   priorSeats: Record<string, PriorSeat>;
@@ -178,6 +185,18 @@ function leaderCircleStyle(
 // Runner-up circle: always neutral
 const runnerUpCircle = { bg: C.surfaceHigh, border: C.outlineVariant, text: C.outline };
 
+// ─── Shared pill color logic ──────────────────────────────────────────────────
+// Yellow while results are still coming in (2026, <90% reporting).
+// Red = REP advantage holds. Green = DEM broke/flipped.
+function pillStyle(repAdvantage: boolean, pctReporting: number, src: "2024" | "2026") {
+  if (src === "2026" && pctReporting < 0.9) {
+    return { bg: "#fef3c7", color: "#92400e" };
+  }
+  return repAdvantage
+    ? { bg: "#fee2e2", color: "#dc2626" }
+    : { bg: "#dcfce7", color: "#16a34a" };
+}
+
 // ─── Judicial Bar (hero row, same style as ChamberBar) ───────────────────────
 function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; scRaces: RaceSummary[]; source: "2024" | "2026" }) {
   void coaRaces;
@@ -192,16 +211,15 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
   const scRepPct  = (sc.current.rep  / sc.total)  * 100;
 
   // Source-aware narrative
-  const coaPill    = source === "2024"
-    ? { label: "GOP SWEPT 2024 · DEM 4→3",  bg: "#fee2e2", color: "#b91c1c" }
-    : { label: "ALL 3 DEM SEATS ON BALLOT",  bg: "#fef3c7", color: "#92400e" };
-  const coaNote    = source === "2024"
+  // Judicial has no live precinct data — pctReporting 0 keeps 2026 yellow, 1 makes 2024 final red
+  const { bg: coaBg, color: coaColor } = pillStyle(true, source === "2024" ? 1 : 0, source);
+  const { bg: scBg,  color: scColor  } = pillStyle(true, source === "2024" ? 1 : 0, source);
+  const coaPill = { label: source === "2024" ? "GOP SWEPT 2024 · DEM 4→3" : "ALL 3 DEM SEATS ON BALLOT", bg: coaBg, color: coaColor };
+  const scPill  = { label: source === "2024" ? "GOP MAJORITY 5–2"          : "1 DEM SEAT ON BALLOT",      bg: scBg,  color: scColor  };
+
+  const coaNote = source === "2024"
     ? "Republicans won all 3 open seats (Murry, Zachary, Freeman), reducing Democrats from 4 to 3 seats."
     : "All 3 remaining Democratic seats — Arrowood, Collins, and Hampson — are contested in November 2026.";
-
-  const scPill     = source === "2024"
-    ? { label: "GOP MAJORITY 5–2",           bg: "#fee2e2", color: "#b91c1c" }
-    : { label: "1 DEM SEAT ON BALLOT",        bg: "#fef3c7", color: "#92400e" };
   const scNote     = source === "2024"
     ? "Republicans hold a 5–2 supermajority on the NC Supreme Court."
     : "Justice Anita Earls (D) is the only Supreme Court seat on the 2026 ballot.";
@@ -224,41 +242,31 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Header row: jump button */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", transition: "background 0.15s" }}>
-          <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>Judicial</span>
-          <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
-        </a>
-      </div>
-
-      {/* NC Supreme Court */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            NC Supreme Court · Current composition
-          </div>
-          <span style={{ fontSize: 9, fontWeight: 700, background: scPill.bg, color: scPill.color, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Supreme Court row */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>Supreme Court</span>
+          <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
+          <span style={{ fontSize: 11, fontWeight: 700, background: scPill.bg, color: scPill.color, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
             {scPill.label}
           </span>
         </div>
         <CompositionBar demPct={scDemPct} repPct={scRepPct} demCount={sc.current.dem} repCount={sc.current.rep} />
-        <div style={{ marginTop: 5, fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{scNote}</div>
+        <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{scNote}</div>
       </div>
 
-      {/* NC Court of Appeals */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            NC Court of Appeals · Current composition
-          </div>
-          <span style={{ fontSize: 9, fontWeight: 700, background: coaPill.bg, color: coaPill.color, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+      {/* Court of Appeals row */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>Court of Appeals</span>
+          <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
+          <span style={{ fontSize: 11, fontWeight: 700, background: coaPill.bg, color: coaPill.color, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
             {coaPill.label}
           </span>
         </div>
         <CompositionBar demPct={coaDemPct} repPct={coaRepPct} demCount={coa.current.dem} repCount={coa.current.rep} />
-        <div style={{ marginTop: 5, fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{coaNote}</div>
+        <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{coaNote}</div>
       </div>
     </div>
   );
@@ -268,19 +276,21 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
 function SupermajorityHero({
   senateSeats,
   houseSeats,
-  lastUpdated,
   coaRaces,
   scRaces,
   source,
   onSourceChange,
+  countdown,
+  lastUpdated,
 }: {
   senateSeats: SeatVisual[];
   houseSeats: SeatVisual[];
-  lastUpdated: string;
   coaRaces: RaceSummary[];
   scRaces: RaceSummary[];
   source: "2024" | "2026";
   onSourceChange: (s: "2024" | "2026") => void;
+  countdown: number;
+  lastUpdated: string;
 }) {
   type ChamberKey = "senate" | "house";
 
@@ -301,11 +311,11 @@ function SupermajorityHero({
   const senate = chamberStats(senateSeats, "senate");
   const house  = chamberStats(houseSeats,  "house");
 
-  // Derive status — track which chambers are already broken vs still held
+  // 2024 banner: status label + narrative
   const houseBroken  = !house.repHasSuper;
   const senateBroken = !senate.repHasSuper;
-  const houseFlipsNeeded  = house.flipsToBreakRep;   // null if already broken
-  const senateFlipsNeeded = senate.flipsToBreakRep;  // null if already broken
+  const houseFlipsNeeded  = house.flipsToBreakRep;
+  const senateFlipsNeeded = senate.flipsToBreakRep;
 
   let statusLabel: string;
   let statusColor: string;
@@ -324,48 +334,66 @@ function SupermajorityHero({
     const needed: string[]  = [];
     if (houseBroken)  broken.push("House");
     if (senateBroken) broken.push("Senate");
-    if (houseFlipsNeeded  !== null) needed.push(`${houseFlipsNeeded} House flip${houseFlipsNeeded !== 1 ? "s" : ""}`);
+    if (houseFlipsNeeded  !== null) needed.push(`${houseFlipsNeeded} Senate flip${houseFlipsNeeded !== 1 ? "s" : ""}`);
     if (senateFlipsNeeded !== null) needed.push(`${senateFlipsNeeded} Senate flip${senateFlipsNeeded !== 1 ? "s" : ""}`);
-
-    const brokenText = broken.length > 0
-      ? `${broken.join(" & ")} supermajority${broken.length > 1 ? "ies" : ""} already broken.`
-      : "";
+    const brokenText = broken.length > 0 ? `${broken.join(" & ")} supermajority${broken.length > 1 ? "ies" : ""} already broken.` : "";
     const neededText = needed.length > 0
-      ? `Democrats need ${needed.join(" and ")} to ${broken.length > 0 ? "complete the sweep" : "break the Republican supermajority and restore executive veto power"}.`
-      : broken.length > 0
-        ? "Governor's veto power fully restored in both chambers."
-        : "";
-
-    return [brokenText, neededText].filter(Boolean).join(" ") ||
-      "Neither party currently holds a supermajority in either chamber.";
+      ? `Democrats need ${needed.join(" and ")} to ${broken.length > 0 ? "complete the sweep" : "break the Republican supermajority"}.`
+      : broken.length > 0 ? "Governor's veto power fully restored in both chambers." : "";
+    return [brokenText, neededText].filter(Boolean).join(" ") || "Neither party currently holds a supermajority in either chamber.";
   }
 
-  function ChamberBar({ label, stats, chamberKey }: { label: string; stats: ReturnType<typeof chamberStats>; chamberKey: "house" | "senate" }) {
+  function ChamberBar({ label, stats, chamberKey, seats }: { label: string; stats: ReturnType<typeof chamberStats>; chamberKey: "house" | "senate"; seats: SeatVisual[] }) {
     const repHasSuper = stats.rep >= stats.cfg.supermajority;
     const seatsShort  = repHasSuper ? 0 : stats.cfg.supermajority - stats.rep;
-    // The bar spans 0–total. DEM fills from left, REP from right.
-    // superPct is now the DEM threshold: DEM must reach this to deny REP supermajority.
-    // Gap = from threshold to where DEM actually ended up (demPct).
-    // Positive when DEM crossed the line (supermajority broken).
-    const gapLeft  = stats.superPct;               // threshold is the left edge
-    const gapWidth = stats.demPct - stats.superPct; // positive if DEM broke supermajority
+    const gapLeft  = stats.superPct;
+    const gapWidth = stats.demPct - stats.superPct;
 
-    const outcomeColor  = repHasSuper ? "#dc2626" : "#16a34a";
-    const outcomeBg     = repHasSuper ? "#fee2e2" : "#dcfce7";
-    const outcomeLabel  = repHasSuper
-      ? "SUPERMAJORITY HELD"
-      : seatsShort === 1
-        ? "SUPERMAJORITY BROKEN — 1 SEAT FLIPPED"
-        : `SUPERMAJORITY BROKEN — ${seatsShort} SEATS FLIPPED`;
+    const avgPct = seats.length > 0 ? seats.reduce((sum, s) => sum + s.pctReporting, 0) / seats.length : 0;
+    const { bg: outcomeBg, color: outcomeColor } = pillStyle(repHasSuper, avgPct, source);
+
+    // 2026: show flip/leading/tight counts from seat data (same logic as battleground section)
+    const allInPlay      = seats.filter(isBattlegroundSeat);
+    const confirmedFlips = allInPlay.filter((s) => s.seatStatus === "FLIPPED").length;
+    const leadingFlips   = allInPlay.filter((s) => s.seatStatus === "LEADING_FLIP").length;
+    const tightRaces     = allInPlay.filter((s) => s.seatStatus === "HOLD" || s.seatStatus === "OPEN").length;
+    const parts2026: string[] = [];
+    if (confirmedFlips > 0) parts2026.push(`${confirmedFlips} FLIP${confirmedFlips !== 1 ? "S" : ""}`);
+    if (leadingFlips   > 0) parts2026.push(`${leadingFlips} LEADING`);
+    if (tightRaces     > 0) parts2026.push(`${tightRaces} TIGHT`);
+    const raceSummary = parts2026.join(" · ") || (repHasSuper ? "NO RACES IN PLAY" : "NO RACES IN PLAY");
+
+    // Small note under the bar
+    const noteParts: string[] = [];
+    if (source === "2026") {
+      if (confirmedFlips > 0) noteParts.push(`${confirmedFlips} confirmed flip${confirmedFlips !== 1 ? "s" : ""}`);
+      if (leadingFlips   > 0) noteParts.push(`${leadingFlips} leading flip${leadingFlips !== 1 ? "s" : ""}`);
+      if (tightRaces     > 0) noteParts.push(`${tightRaces} tight race${tightRaces !== 1 ? "s" : ""}`);
+    } else {
+      if (repHasSuper) {
+        noteParts.push(`Republicans hold their supermajority — ${stats.rep} of ${stats.cfg.total} seats.`);
+      } else {
+        noteParts.push(`Republicans hold ${stats.rep} seats, ${seatsShort} short of the ${stats.cfg.supermajority}-seat supermajority.`);
+      }
+    }
+    const barNote = noteParts.join(" · ");
+
+    const outcomeLabel = source === "2026"
+      ? avgPct < 0.9
+        ? `SUPERMAJORITY (${stats.cfg.supermajority}) · ${raceSummary || "RESULTS COMING IN"}`
+        : `SUPERMAJORITY (${stats.cfg.supermajority}) ${repHasSuper ? "HELD" : "BROKEN"} · ${raceSummary}`
+      : repHasSuper
+        ? `SUPERMAJORITY (${stats.cfg.supermajority}) HELD`
+        : seatsShort === 1
+          ? `SUPERMAJORITY (${stats.cfg.supermajority}) BROKEN — 1 SEAT FLIPPED`
+          : `SUPERMAJORITY (${stats.cfg.supermajority}) BROKEN — ${seatsShort} SEATS FLIPPED`;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", transition: "background 0.15s" }}>
-              <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>{label}</span>
-              <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
-            </a>
+            <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>{label}</span>
+            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
             <span style={{ fontSize: 11, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
               {outcomeLabel}
             </span>
@@ -374,41 +402,25 @@ function SupermajorityHero({
 
         {/* Bar */}
         <div style={{ position: "relative" }}>
-          {/* Threshold label */}
-          <div style={{ position: "relative", height: 16, marginBottom: 2 }}>
-            <div style={{
-              position: "absolute",
-              left: `${stats.superPct}%`,
-              transform: "translateX(-50%)",
-              fontSize: 9,
-              fontWeight: 700,
-              color: outcomeColor,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              whiteSpace: "nowrap",
-            }}>
-              {stats.cfg.supermajority} = Supermajority
-            </div>
-          </div>
           <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
             {/* DEM from left */}
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${stats.demPct}%`, background: C.primaryMid }} />
-            {/* If DEM broke supermajority, highlight the gap zone in green */}
-            {!repHasSuper && gapWidth > 0 && (
+            {/* Gap overlay only when result is confirmed (2024, or 2026 ≥90%) */}
+            {!repHasSuper && gapWidth > 0 && (source === "2024" || avgPct >= 0.9) && (
               <div style={{ position: "absolute", left: `${gapLeft}%`, top: 0, bottom: 0, width: `${gapWidth}%`, background: "#16a34a", opacity: 0.85 }} />
             )}
             {/* REP from right */}
             <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${stats.repPct}%`, background: C.secondary }} />
-            {/* Supermajority threshold marker */}
+            {/* Supermajority threshold marker — white in 2026 preview, colored once confirmed */}
             <div style={{
               position: "absolute",
               left: `${stats.superPct}%`,
               top: 0, bottom: 0,
               width: 3,
-              background: outcomeColor,
+              background: (source === "2026" && avgPct < 0.9) ? "rgba(255,255,255,0.75)" : outcomeColor,
               transform: "translateX(-50%)",
               zIndex: 10,
-              boxShadow: `0 0 6px ${outcomeColor}80`,
+              boxShadow: (source === "2026" && avgPct < 0.9) ? "none" : `0 0 6px ${outcomeColor}80`,
             }} />
             {/* DEM count inside bar */}
             <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
@@ -420,6 +432,7 @@ function SupermajorityHero({
             </div>
           </div>
         </div>
+        {barNote && <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{barNote}</div>}
       </div>
     );
   }
@@ -427,38 +440,52 @@ function SupermajorityHero({
   return (
     <section style={{ marginBottom: 48 }}>
       {/* Thin status banner */}
-      <div style={{ background: C.primary, borderRadius: "10px 10px 0 0", padding: "0 24px", height: 50, display: "flex", alignItems: "center", gap: 14, overflow: "hidden", boxShadow: "0 4px 24px rgba(4,37,103,0.25)" }}>
-        <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
-          LIVE ANALYSIS
-        </span>
-        <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>
-          Supermajority Status:
-        </span>
-        <span style={{ fontWeight: 900, fontSize: 13, color: statusColor, flexShrink: 0 }}>
-          {statusLabel}
-        </span>
-        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontWeight: 500 }}>
-          {narrative()}
-        </span>
-        {lastUpdated && (
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, flexShrink: 0 }}>
-            Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
+      <div style={{ background: C.primary, borderRadius: "10px 10px 0 0", padding: "0 24px", height: 50, display: "flex", alignItems: "center", gap: 12, overflow: "hidden", boxShadow: "0 4px 24px rgba(4,37,103,0.25)" }}>
+        {source === "2026" ? (
+          <>
+            <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
+              LIVE ANALYSIS
+            </span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+              {countdown > 0 ? `Updating in ${countdown}s` : "Updating…"}
+            </span>
+          </>
+        ) : (
+          <>
+            <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
+              2024 FINAL RESULTS
+            </span>
+            <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>
+              Supermajority Status:
+            </span>
+            <span style={{ fontWeight: 900, fontSize: 13, color: statusColor, flexShrink: 0 }}>
+              {statusLabel}
+            </span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontWeight: 500 }}>
+              {narrative()}
+            </span>
+          </>
         )}
       </div>
 
       {/* Full-width Election Watch card */}
       <div style={{ background: C.surface, borderRadius: "0 0 12px 12px", border: `1px solid ${C.outlineVariant}40`, borderTop: "none", padding: "28px 32px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 28 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em", textTransform: "uppercase" }}>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/donkey-logo.png" alt="" style={{ height: 32, width: "auto" }} />
             Election Watch
           </h1>
           {/* Source toggle */}
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {(["2024", "2026"] as const).map((yr) => {
               const isActive = source === yr;
               const label = yr === "2024" ? "2024 Results" : "2026 Preview";
-              const sub   = yr === "2024" ? "Nov 5, 2024 · Final" : "Nov 3, 2026 · Mock";
+              const sub   = yr === "2024"
+                ? "Nov 5, 2024 · Final"
+                : lastUpdated
+                  ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · Live"
+                  : "Nov 3, 2026 · Pending";
               return (
                 <button
                   key={yr}
@@ -479,8 +506,8 @@ function SupermajorityHero({
             })}
           </div>
         </div>
-        <ChamberBar label="House" stats={house} chamberKey="house" />
-        <ChamberBar label="Senate" stats={senate} chamberKey="senate" />
+        <ChamberBar label="House" stats={house} chamberKey="house" seats={houseSeats} />
+        <ChamberBar label="Senate" stats={senate} chamberKey="senate" seats={senateSeats} />
         <JudicialBar coaRaces={coaRaces} scRaces={scRaces} source={source} />
       </div>
     </section>
@@ -491,9 +518,11 @@ function SupermajorityHero({
 function BattlegroundSection({
   chamber,
   seats,
+  source,
 }: {
   chamber: "senate" | "house";
   seats: SeatVisual[];
+  source: "2024" | "2026";
 }) {
   const config = CHAMBER_CONFIG[chamber];
   const repLeads = seats.filter((s) => seatCurrentParty(s) === "REP");
@@ -552,13 +581,13 @@ function BattlegroundSection({
               ? Math.round(seat.margin * seat.totalVotes).toLocaleString()
               : null;
 
-          // Status footer text (hover-only — keep concise, vote diff shown inline)
-          let footerText = "";
-          if (seat.margin !== null) {
-            if (seat.margin < 0.01)       footerText = "TOO CLOSE TO CALL";
-            else if (seat.margin < 0.02)  footerText = "SUPER COMPETITIVE";
-            else                          footerText = "SWING SEAT";
-          }
+          // Hover footer — show 2024 prior result in 2026 mode
+          const priorVoteDiff = seat.priorMargin !== null && seat.totalVotes > 0
+            ? Math.round(seat.priorMargin * seat.totalVotes).toLocaleString()
+            : null;
+          const footerText = source === "2026" && seat.priorMargin !== null
+            ? `2024: ${seat.incumbentParty ?? "?"} +${(seat.priorMargin * 100).toFixed(1)}%${priorVoteDiff ? ` (${priorVoteDiff} votes)` : ""}`
+            : "";
 
           const leaderStyle = leaderCircleStyle(seat.seatStatus, seat.leaderParty, seat.margin, seat.pctReporting);
 
@@ -646,10 +675,14 @@ function BattlegroundSection({
                 )}
               </div>
 
-              {/* Hover footer — closeness label only */}
+              {/* Hover footer — 2024 prior result */}
               {footerText && (
-                <div className="card-footer" style={{ padding: "8px 14px", background: `${C.primary}08`, borderTop: `1px solid ${C.outlineVariant}30`, fontSize: 10, fontWeight: 700, textAlign: "center", color: C.primary, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  {footerText}
+                <div className="card-footer" style={{ padding: "8px 14px", background: `${C.primary}08`, borderTop: `1px solid ${C.outlineVariant}30`, fontSize: 10, fontWeight: 700, textAlign: "center", color: C.outline, letterSpacing: "0.04em" }}>
+                  2024:{" "}
+                  <span style={{ color: seat.incumbentParty === "DEM" ? C.primaryMid : seat.incumbentParty === "REP" ? C.secondary : C.outline, fontWeight: 900 }}>
+                    {seat.incumbentParty ?? "?"}
+                  </span>
+                  {" "}{priorVoteDiff ? `+${priorVoteDiff} votes` : ""}{" "}· +{(seat.priorMargin! * 100).toFixed(1)}%
                 </div>
               )}
             </div>
@@ -751,7 +784,7 @@ function JudicialBattlegroundSection({
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>Judicial Races</h2>
           <p style={{ margin: "2px 0 0", fontSize: 14, color: C.outline, fontWeight: 500 }}>
-            NC Court of Appeals · NC Supreme Court · November 2026
+            NC Court of Appeals · NC Supreme Court
           </p>
         </div>
       </div>
@@ -793,7 +826,13 @@ export default function BalanceOfPowerPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [source, setSource] = useState<"2024" | "2026">("2024");
+  const [source, setSource] = useState<"2024" | "2026">("2026");
+  const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
+
+  useEffect(() => {
+    const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -815,6 +854,7 @@ export default function BalanceOfPowerPage() {
         setError(err instanceof Error ? err.message : "Failed to load live data");
       } finally {
         setLoading(false);
+        setCountdown(POLL_INTERVAL / 1000);
       }
     };
     setLoading(true);
@@ -883,9 +923,9 @@ export default function BalanceOfPowerPage() {
 
         {!loading && !error && (
           <>
-            <SupermajorityHero senateSeats={senate} houseSeats={house} lastUpdated={lastUpdated} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} />
-            <BattlegroundSection chamber="house"  seats={house}  />
-            <BattlegroundSection chamber="senate" seats={senate} />
+            <SupermajorityHero senateSeats={senate} houseSeats={house} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} countdown={countdown} lastUpdated={lastUpdated} />
+            <BattlegroundSection chamber="house"  seats={house}  source={source} />
+            <BattlegroundSection chamber="senate" seats={senate} source={source} />
             <JudicialBattlegroundSection coaRaces={coaRaces} scRaces={scRaces} />
           </>
         )}
