@@ -596,7 +596,14 @@ function BattlegroundSection({
 
           const holdParty = seat.incumbentParty ?? seat.leaderParty;
           let sb: { label: string; bg: string; color: string } = { label: `${holdParty} HOLD`, bg: `${C.primaryMid}18`, color: C.primaryMid };
-          if (seat.seatStatus === "OPEN") {
+          if (source === "2026" && seat.pctReporting === 0 && seat.incumbentParty) {
+            // No votes yet — show prior-based label
+            if (seat.incumbentParty === "DEM") {
+              sb = { label: "DEM HOLD", bg: `${C.primaryMid}18`, color: C.primaryMid };
+            } else {
+              sb = { label: "FLIP", bg: "#fef9c3", color: "#854d0e" };
+            }
+          } else if (seat.seatStatus === "OPEN") {
             sb = { label: "OPEN", bg: C.surfaceHigh, color: C.outline };
           } else if (isDemFlip) {
             sb = confirmed
