@@ -9,27 +9,24 @@ import { buildPriorLookup } from "../../../lib/priorResults";
 
 export const revalidate = 60;
 
-const NCSBE_URL = "https://er.ncsbe.gov/enr/20241105/data/results_0.txt";
+export async function GET(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url);
+  const source = searchParams.get("source") ?? "2024";
 
-// Swap this filename to "prior_2024.json" when running for the 2026 election.
-const PRIOR_FILE = process.env.PRIOR_FILE ?? "prior_2022.json";
-
-export async function GET(): Promise<Response> {
   try {
     let text: string;
+    let priorFile: string;
 
-    if (process.env.USE_SAMPLE === "true") {
-      const samplePath = path.join(process.cwd(), "tests", "prior_2024.json");
-      text = fs.readFileSync(samplePath, "utf-8");
+    if (source === "2026") {
+      // Mock 2026 preview data
+      const stagingPath = path.join(process.cwd(), "tests", "staging_2026.json");
+      text = fs.readFileSync(stagingPath, "utf-8");
+      priorFile = "prior_2024.json"; // compare 2026 against 2024 results
     } else {
-      const res = await fetch(NCSBE_URL);
-      if (!res.ok) {
-        return Response.json(
-          { error: "Failed to fetch NCSBE results", status: res.status },
-          { status: 502 },
-        );
-      }
-      text = await res.text();
+      // 2024 final results — always read from local static file
+      const resultsPath = path.join(process.cwd(), "tests", "prior_2024.json");
+      text = fs.readFileSync(resultsPath, "utf-8");
+      priorFile = "prior_2022.json"; // compare 2024 against 2022 results
     }
 
     const raw = parseRawFeed(text);
@@ -37,14 +34,14 @@ export async function GET(): Promise<Response> {
     const races = summarizeRaces(tracked);
 
     // Load prior-election data for hold/flip context.
-    const priorPath = path.join(process.cwd(), "tests", PRIOR_FILE);
+    const priorPath = path.join(process.cwd(), "tests", priorFile);
     const priorText = fs.readFileSync(priorPath, "utf-8");
     const priorRaw = parseRawFeed(priorText);
     const priorTracked = priorRaw.filter(isTrackedCandidateRace);
     const priorRaces = summarizeRaces(priorTracked);
     const priorSeats = buildPriorLookup(priorRaces);
 
-    return Response.json({ races, priorSeats, updatedAt: new Date().toISOString() });
+    return Response.json({ races, priorSeats, updatedAt: new Date().toISOString(), source });
   } catch (error) {
     return Response.json(
       {

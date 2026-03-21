@@ -45,7 +45,7 @@ export function parseRawFeed(text: string): RawRecord[] {
 
 export function isTrackedCandidateRace(record: RawRecord): boolean {
   return (
-    (record.ogl === "NCS" || record.ogl === "NCH" || record.ogl === "SPC") &&
+    (record.ogl === "NCS" || record.ogl === "NCH" || record.ogl === "JUD") &&
     record.ref === "0"
   );
 }

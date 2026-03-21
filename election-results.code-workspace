@@ -4,5 +4,13 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"npm test": true,
+			"/^node tests/live-ncsbe-results\\.test\\.mjs$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
 }

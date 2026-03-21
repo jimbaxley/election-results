@@ -10,7 +10,10 @@
       "Bash(npx vercel:*)",
       "Bash(npx gh:*)",
       "Bash(gh auth:*)",
-      "Bash(printf \"your-secret-key-here\")"
+      "Bash(printf \"your-secret-key-here\")",
+      "Bash(node -e \":*)",
+      "Bash(sed -i '' 's/11\\\\/03\\\\/2026,NASH,NC HOUSE OF REPRESENTATIVES DISTRICT 025,Candidate TBD,CANDIDATE,,TBD,,,,,,,,,,,,,DEM,FALSE,FALSE,TRUE,1,2/11\\\\/03\\\\/2026,NASH,NC HOUSE OF REPRESENTATIVES DISTRICT 025,Lorenza Wilkins,LORENZA,,WILKINS,,,,,NC,,,,,,,,DEM,FALSE,FALSE,TRUE,1,2/' /Users/jimbaxley/Library/CloudStorage/Dropbox/C2C/CODE/election-results/tests/20261103.csv)",
+      "Bash(sed -i '' 's/11\\\\/03\\\\/2026,WAKE,NC HOUSE OF REPRESENTATIVES DISTRICT 037,Candidate TBD,CANDIDATE,,TBD,,,,,,,,,,,,,DEM,FALSE,FALSE,TRUE,1,2/11\\\\/03\\\\/2026,WAKE,NC HOUSE OF REPRESENTATIVES DISTRICT 037,Winn Decker,WINN,,DECKER,,,,,NC,,,,,,,,DEM,FALSE,FALSE,TRUE,1,2/' /Users/jimbaxley/Library/CloudStorage/Dropbox/C2C/CODE/election-results/tests/20261103.csv)"
     ]
   }
 }

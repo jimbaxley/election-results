@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CHAMBER_CONFIG } from "../../lib/config";
+import { CHAMBER_CONFIG, COA_CONFIG, SC_CONFIG } from "../../lib/config";
 import type { RaceSummary } from "../../lib/parseResults";
 import { COMPETITIVE_THRESHOLD } from "../../lib/priorResults";
 import type { PriorSeat } from "../../lib/priorResults";
@@ -48,6 +48,8 @@ type SeatVisual = {
   incumbentParty: string | null;
   priorMargin: number | null;
   seatStatus: SeatStatus;
+  hasFeaturedCandidate: boolean;
+  allCandidates: { name: string; party: string; pct: number }[];
 };
 
 
@@ -57,10 +59,16 @@ function extractDistrictNumber(label: string): number {
 }
 
 function isBattlegroundSeat(seat: SeatVisual): boolean {
+  if (seat.hasFeaturedCandidate) return true;
   // Flips always show — the change itself is the story regardless of margin.
   if (seat.seatStatus === "FLIPPED" || seat.seatStatus === "LEADING_FLIP") return true;
   // Holds and open seats only show if currently within the competitive threshold.
   return seat.margin !== null && seat.margin < COMPETITIVE_THRESHOLD;
+}
+
+function seatCurrentParty(seat: SeatVisual): string {
+  if (seat.pctReporting > 0) return seat.leaderParty;
+  return seat.incumbentParty ?? "";
 }
 
 
@@ -88,9 +96,10 @@ function toSeatVisual(
   const runnerUp = race.candidates[1];
   const prior    = priorSeats[race.cnm] ?? null;
   const leaderParty = leader?.party ?? "";
+  const hasReporting = race.precincts.reporting > 0;
 
   let seatStatus: SeatStatus = "OPEN";
-  if (prior) {
+  if (prior && hasReporting) {
     const flipped = leaderParty !== "" && leaderParty !== prior.winnerParty;
     if (flipped) {
       seatStatus = race.precincts.pct >= 0.9 ? "FLIPPED" : "LEADING_FLIP";
@@ -114,6 +123,14 @@ function toSeatVisual(
     incumbentParty: prior?.winnerParty ?? null,
     priorMargin:    prior?.margin ?? null,
     seatStatus,
+    hasFeaturedCandidate: race.candidates.some((c) => isFeaturedCandidate(formatName(c.name))),
+    allCandidates: [...race.candidates]
+      .sort((a, b) => {
+        const aFeatured = isFeaturedCandidate(formatName(a.name)) ? 0 : 1;
+        const bFeatured = isFeaturedCandidate(formatName(b.name)) ? 0 : 1;
+        return aFeatured - bFeatured;
+      })
+      .map((c) => ({ name: c.name, party: c.party, pct: c.pct * 100 })),
   };
 }
 
@@ -161,29 +178,116 @@ function leaderCircleStyle(
 // Runner-up circle: always neutral
 const runnerUpCircle = { bg: C.surfaceHigh, border: C.outlineVariant, text: C.outline };
 
+// ─── Judicial Bar (hero row, same style as ChamberBar) ───────────────────────
+function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; scRaces: RaceSummary[]; source: "2024" | "2026" }) {
+  void coaRaces;
+  void scRaces;
+
+  const coa = COA_CONFIG;
+  const sc  = SC_CONFIG;
+
+  const coaDemPct = (coa.current.dem / coa.total) * 100;
+  const coaRepPct = (coa.current.rep / coa.total) * 100;
+  const scDemPct  = (sc.current.dem  / sc.total)  * 100;
+  const scRepPct  = (sc.current.rep  / sc.total)  * 100;
+
+  // Source-aware narrative
+  const coaPill    = source === "2024"
+    ? { label: "GOP SWEPT 2024 · DEM 4→3",  bg: "#fee2e2", color: "#b91c1c" }
+    : { label: "ALL 3 DEM SEATS ON BALLOT",  bg: "#fef3c7", color: "#92400e" };
+  const coaNote    = source === "2024"
+    ? "Republicans won all 3 open seats (Murry, Zachary, Freeman), reducing Democrats from 4 to 3 seats."
+    : "All 3 remaining Democratic seats — Arrowood, Collins, and Hampson — are contested in November 2026.";
+
+  const scPill     = source === "2024"
+    ? { label: "GOP MAJORITY 5–2",           bg: "#fee2e2", color: "#b91c1c" }
+    : { label: "1 DEM SEAT ON BALLOT",        bg: "#fef3c7", color: "#92400e" };
+  const scNote     = source === "2024"
+    ? "Republicans hold a 5–2 supermajority on the NC Supreme Court."
+    : "Justice Anita Earls (D) is the only Supreme Court seat on the 2026 ballot.";
+
+  function CompositionBar({ demPct, repPct, demCount, repCount }: { demPct: number; repPct: number; demCount: number; repCount: number }) {
+    return (
+      <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${demPct}%`, background: C.primaryMid }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${repPct}%`, background: C.secondary }} />
+        {/* 50% majority line */}
+        <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.6)", transform: "translateX(-50%)", zIndex: 10 }} />
+        <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+          DEM {demCount}
+        </div>
+        <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+          REP {repCount}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Header row: jump button */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, borderRadius: 8, padding: "6px 12px", transition: "background 0.15s" }}>
+          <span style={{ fontWeight: 700, fontSize: 18, color: C.primary }}>Judicial</span>
+          <span style={{ fontSize: 13, color: C.secondary, fontWeight: 800 }}>↓</span>
+        </a>
+      </div>
+
+      {/* NC Supreme Court */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            NC Supreme Court · Current composition
+          </div>
+          <span style={{ fontSize: 9, fontWeight: 700, background: scPill.bg, color: scPill.color, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            {scPill.label}
+          </span>
+        </div>
+        <CompositionBar demPct={scDemPct} repPct={scRepPct} demCount={sc.current.dem} repCount={sc.current.rep} />
+        <div style={{ marginTop: 5, fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{scNote}</div>
+      </div>
+
+      {/* NC Court of Appeals */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            NC Court of Appeals · Current composition
+          </div>
+          <span style={{ fontSize: 9, fontWeight: 700, background: coaPill.bg, color: coaPill.color, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            {coaPill.label}
+          </span>
+        </div>
+        <CompositionBar demPct={coaDemPct} repPct={coaRepPct} demCount={coa.current.dem} repCount={coa.current.rep} />
+        <div style={{ marginTop: 5, fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{coaNote}</div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Supermajority Hero ───────────────────────────────────────────────────────
 function SupermajorityHero({
   senateSeats,
   houseSeats,
   lastUpdated,
+  coaRaces,
+  scRaces,
+  source,
+  onSourceChange,
 }: {
   senateSeats: SeatVisual[];
   houseSeats: SeatVisual[];
   lastUpdated: string;
+  coaRaces: RaceSummary[];
+  scRaces: RaceSummary[];
+  source: "2024" | "2026";
+  onSourceChange: (s: "2024" | "2026") => void;
 }) {
   type ChamberKey = "senate" | "house";
 
-  // Flip counts split by direction across both chambers
-  const allSeats   = [...senateSeats, ...houseSeats];
-  const demFlipped = allSeats.filter((s) => s.seatStatus === "FLIPPED"      && s.leaderParty === "DEM").length;
-  const demLeading = allSeats.filter((s) => s.seatStatus === "LEADING_FLIP" && s.leaderParty === "DEM").length;
-  const repFlipped = allSeats.filter((s) => s.seatStatus === "FLIPPED"      && s.leaderParty === "REP").length;
-  const repLeading = allSeats.filter((s) => s.seatStatus === "LEADING_FLIP" && s.leaderParty === "REP").length;
-
   function chamberStats(seats: SeatVisual[], key: ChamberKey) {
     const cfg = CHAMBER_CONFIG[key];
-    const dem = seats.filter((s) => s.leaderParty === "DEM").length;
-    const rep = seats.filter((s) => s.leaderParty === "REP").length;
+    const dem = seats.filter((s) => seatCurrentParty(s) === "DEM").length;
+    const rep = seats.filter((s) => seatCurrentParty(s) === "REP").length;
     const demPct = (dem / cfg.total) * 100;
     const repPct = (rep / cfg.total) * 100;
     const superPct = ((cfg.total - cfg.supermajority) / cfg.total) * 100;
@@ -322,83 +426,62 @@ function SupermajorityHero({
 
   return (
     <section style={{ marginBottom: 48 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "stretch" }} className="hero-grid">
-        {/* Progress bars card */}
-        <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.outlineVariant}40`, padding: "28px 32px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 28 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: C.secondary, marginBottom: 4 }}>
-              Live Results | Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </div>
-         
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em", textTransform: "uppercase" }}>
-              Supermajority Watch
-            </h1>
-          </div>
-          <ChamberBar label="House" stats={house} chamberKey="house" />
-          <ChamberBar label="Senate" stats={senate} chamberKey="senate" />
-        </div>
+      {/* Thin status banner */}
+      <div style={{ background: C.primary, borderRadius: "10px 10px 0 0", padding: "0 24px", height: 50, display: "flex", alignItems: "center", gap: 14, overflow: "hidden", boxShadow: "0 4px 24px rgba(4,37,103,0.25)" }}>
+        <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
+          LIVE ANALYSIS
+        </span>
+        <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>
+          Supermajority Status:
+        </span>
+        <span style={{ fontWeight: 900, fontSize: 13, color: statusColor, flexShrink: 0 }}>
+          {statusLabel}
+        </span>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontWeight: 500 }}>
+          {narrative()}
+        </span>
+        {lastUpdated && (
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, flexShrink: 0 }}>
+            Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
 
-        {/* Status card */}
-        <div style={{ background: C.primary, borderRadius: 12, padding: "28px 28px", color: "#fff", position: "relative", overflow: "hidden", minWidth: 240, maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "center", boxShadow: "0 4px 24px rgba(4,37,103,0.25)" }} className="status-card">
-          {/* Background icon watermark */}
-          <div style={{ position: "absolute", top: 0, right: 0, fontSize: 120, opacity: 0.06, lineHeight: 1, padding: 12, userSelect: "none" }}>
-            ⚖
+      {/* Full-width Election Watch card */}
+      <div style={{ background: C.surface, borderRadius: "0 0 12px 12px", border: `1px solid ${C.outlineVariant}40`, borderTop: "none", padding: "28px 32px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 28 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em", textTransform: "uppercase" }}>
+            Election Watch
+          </h1>
+          {/* Source toggle */}
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            {(["2024", "2026"] as const).map((yr) => {
+              const isActive = source === yr;
+              const label = yr === "2024" ? "2024 Results" : "2026 Preview";
+              const sub   = yr === "2024" ? "Nov 5, 2024 · Final" : "Nov 3, 2026 · Mock";
+              return (
+                <button
+                  key={yr}
+                  onClick={() => onSourceChange(yr)}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                    padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+                    border: `1px solid ${isActive ? C.primary : C.outlineVariant}`,
+                    background: isActive ? C.primary : "transparent",
+                    color: isActive ? "#fff" : C.outline,
+                    transition: "background 0.15s, border-color 0.15s",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em" }}>{label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 500, opacity: 0.8 }}>{sub}</span>
+                </button>
+              );
+            })}
           </div>
-          <div style={{ position: "relative" }}>
-            <span style={{ display: "inline-block", background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", marginBottom: 14 }}>
-              LIVE ANALYSIS
-            </span>
-            <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 900, lineHeight: 1.2, color: "#fff" }}>
-              Supermajority Status:{" "}
-              <br />
-              <span style={{ color: statusColor }}>{statusLabel}</span>
-            </h2>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, opacity: 0.9, fontWeight: 500 }}>
-              {narrative()}
-            </p>
-            {(demFlipped > 0 || demLeading > 0 || repFlipped > 0 || repLeading > 0) && (
-              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                {demFlipped > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ background: "#16a34a", borderRadius: 999, width: 8, height: 8, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#bbf7d0" }}>
-                      {demFlipped} seat{demFlipped !== 1 ? "s" : ""} flipped to DEM ↺
-                    </span>
-                  </div>
-                )}
-                {demLeading > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ background: "#4ade80", borderRadius: 999, width: 8, height: 8, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#bbf7d0", opacity: 0.85 }}>
-                      {demLeading} DEM leading in flip seat{demLeading !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                )}
-                {repFlipped > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ background: "#dc2626", borderRadius: 999, width: 8, height: 8, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fecaca" }}>
-                      {repFlipped} seat{repFlipped !== 1 ? "s" : ""} flipped to REP ↺
-                    </span>
-                  </div>
-                )}
-                {repLeading > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ background: "#f87171", borderRadius: 999, width: 8, height: 8, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#fecaca", opacity: 0.85 }}>
-                      {repLeading} REP leading in flip seat{repLeading !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          {lastUpdated && (
-            <div style={{ position: "absolute", bottom: 12, right: 16, fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>
-              {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </div>
-          )}
         </div>
+        <ChamberBar label="House" stats={house} chamberKey="house" />
+        <ChamberBar label="Senate" stats={senate} chamberKey="senate" />
+        <JudicialBar coaRaces={coaRaces} scRaces={scRaces} source={source} />
       </div>
     </section>
   );
@@ -413,7 +496,7 @@ function BattlegroundSection({
   seats: SeatVisual[];
 }) {
   const config = CHAMBER_CONFIG[chamber];
-  const repLeads = seats.filter((s) => s.leaderParty === "REP");
+  const repLeads = seats.filter((s) => seatCurrentParty(s) === "REP");
 
   const allInPlay = seats.filter(isBattlegroundSeat).sort((a, b) => extractDistrictNumber(a.districtLabel) - extractDistrictNumber(b.districtLabel));
 
@@ -505,12 +588,6 @@ function BattlegroundSection({
             ? `3px solid ${flipBorderColor}`
             : `1px solid ${C.outlineVariant}50`;
 
-          // Order: put leader first visually
-          const cand1 = { name: seat.leaderName,   party: seat.leaderParty,   pct: seat.leaderPct };
-          const cand2 = { name: seat.runnerUpName,  party: seat.runnerUpParty, pct: seat.runnerUpPct };
-          // Show DEM on top always
-          const [top, bottom] = cand1.party === "DEM" ? [cand1, cand2] : [cand2, cand1];
-
           return (
             <div key={seat.gid} className="race-card" style={{ background: C.surface, borderRadius: 12, borderLeft: flipBorder, borderRight: `1px solid ${C.outlineVariant}50`, borderTop: `1px solid ${C.outlineVariant}50`, borderBottom: `1px solid ${C.outlineVariant}50`, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}>
               {/* Card header */}
@@ -530,16 +607,16 @@ function BattlegroundSection({
 
               {/* Candidates */}
               <div style={{ padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-                {[top, bottom].map((cand) => {
+                {seat.allCandidates.map((cand) => {
                   const isLeader = cand.party === seat.leaderParty;
                   const isD      = cand.party === "DEM";
                   const barColor = isD ? C.primaryMid : C.secondary;
                   const circle   = isLeader ? leaderStyle : runnerUpCircle;
                   return (
-                    <div key={cand.party} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {/* Party avatar — donkey logo for featured candidates, colored circle otherwise */}
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${circle.border}`, background: circle.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: circle.text, overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
-                        {isFeaturedCandidate(cand.name)
+                        {isFeaturedCandidate(formatName(cand.name))
                           ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           : cand.party || "?"}
                       </div>
@@ -583,6 +660,131 @@ function BattlegroundSection({
   );
 }
 
+// ─── Judicial Battleground Section ───────────────────────────────────────────
+function JudicialBattlegroundSection({
+  coaRaces,
+  scRaces,
+}: {
+  coaRaces: RaceSummary[];
+  scRaces: RaceSummary[];
+}) {
+  if (coaRaces.length === 0 && scRaces.length === 0) return null;
+
+  function JudicialCard({ race, label }: { race: RaceSummary; label: string }) {
+    const hasVotes = race.precincts.reporting > 0;
+    const leader = race.candidates[0];
+    const leaderParty = hasVotes ? (leader?.party ?? "") : "";
+
+    // Determine badge
+    const bdgColor = leaderParty === "DEM" ? C.primaryMid : leaderParty === "REP" ? C.secondary : C.outline;
+    const bdgBg    = leaderParty === "DEM" ? `${C.primaryMid}18` : leaderParty === "REP" ? `${C.secondary}18` : C.surfaceHigh;
+    const bdgLabel = hasVotes ? `${leaderParty} LEADING` : "RESULTS PENDING";
+
+    // Left border signals party leading
+    const flipBorder = leaderParty === "DEM"
+      ? `3px solid ${C.primaryMid}`
+      : leaderParty === "REP"
+        ? `3px solid ${C.secondary}`
+        : `1px solid ${C.outlineVariant}50`;
+
+    return (
+      <div className="race-card" style={{ background: C.surface, borderRadius: 12, borderLeft: flipBorder, borderRight: `1px solid ${C.outlineVariant}50`, borderTop: `1px solid ${C.outlineVariant}50`, borderBottom: `1px solid ${C.outlineVariant}50`, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}>
+        {/* Card header */}
+        <div style={{ padding: "10px 14px", background: C.surfaceLow, borderBottom: `1px solid ${C.outlineVariant}30`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: C.primary }}>{label}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 7px", background: bdgBg, color: bdgColor }}>
+              {bdgLabel}
+            </span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
+            {Math.round(race.precincts.pct * 100)}% Reporting
+          </span>
+        </div>
+
+        {/* Candidates */}
+        <div style={{ padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+          {race.candidates.map((cand) => {
+            const isD = cand.party === "DEM";
+            const barColor = isD ? C.primaryMid : C.secondary;
+            const pctDisplay = cand.pct * 100;
+            return (
+              <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline }}>
+                  {cand.party || "?"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
+                      {formatName(cand.name)}{" "}
+                      <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
+                    </span>
+                    <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>
+                      {pctDisplay > 0 ? `${pctDisplay.toFixed(1)}%` : "—"}
+                    </span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: C.surfaceTrack, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pctDisplay}%`, background: barColor, borderRadius: 3 }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {race.margin !== null && race.totalVotes > 0 && (
+            <div style={{ fontSize: 14, color: C.outline, fontWeight: 400, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
+              Margin: {Math.round(race.margin * race.totalVotes).toLocaleString()} votes | {(race.margin * 100).toFixed(2)}%
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function seatLabel(cnm: string, prefix: string): string {
+    const m = cnm.match(/SEAT\s+0*(\d+)/i);
+    return m ? `${prefix} Seat ${m[1]}` : cnm;
+  }
+
+  return (
+    <section id="judicial-battleground" style={{ marginBottom: 48 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, borderLeft: `4px solid ${C.secondary}`, paddingLeft: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>Judicial Races</h2>
+          <p style={{ margin: "2px 0 0", fontSize: 14, color: C.outline, fontWeight: 500 }}>
+            NC Court of Appeals · NC Supreme Court · November 2026
+          </p>
+        </div>
+      </div>
+
+      {coaRaces.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
+            Court of Appeals — {coaRaces.length} seat{coaRaces.length !== 1 ? "s" : ""}
+          </div>
+          <div className="race-grid race-grid-judicial" style={{ marginBottom: 32 }}>
+            {coaRaces.map((r) => (
+              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "CoA")} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {scRaces.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
+            Supreme Court — {scRaces.length} seat{scRaces.length !== 1 ? "s" : ""}
+          </div>
+          <div className="race-grid race-grid-judicial">
+            {scRaces.map((r) => (
+              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "NCSC")} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function BalanceOfPowerPage() {
   const [races,       setRaces]       = useState<RaceSummary[]>([]);
@@ -591,6 +793,7 @@ export default function BalanceOfPowerPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [source, setSource] = useState<"2024" | "2026">("2024");
 
   useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -601,7 +804,7 @@ export default function BalanceOfPowerPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/results");
+        const res = await fetch(`/api/results?source=${source}`);
         if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
         const data = (await res.json()) as ApiResponse;
         setRaces(data.races ?? []);
@@ -614,14 +817,17 @@ export default function BalanceOfPowerPage() {
         setLoading(false);
       }
     };
+    setLoading(true);
     fetchData();
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [source]);
 
-  const { senate, house } = useMemo(() => ({
-    senate: races.filter((r) => r.ogl === "NCS").map((r) => toSeatVisual(r, priorSeats)),
-    house:  races.filter((r) => r.ogl === "NCH").map((r) => toSeatVisual(r, priorSeats)),
+  const { senate, house, coaRaces, scRaces } = useMemo(() => ({
+    senate:   races.filter((r) => r.ogl === "NCS").map((r) => toSeatVisual(r, priorSeats)),
+    house:    races.filter((r) => r.ogl === "NCH").map((r) => toSeatVisual(r, priorSeats)),
+    coaRaces: races.filter((r) => r.ogl === "JUD" && r.cnm.includes("COURT OF APPEALS")),
+    scRaces:  races.filter((r) => r.ogl === "JUD" && r.cnm.includes("SUPREME COURT")),
   }), [races, priorSeats]);
 
   return (
@@ -649,7 +855,8 @@ export default function BalanceOfPowerPage() {
           gap: 16px;
         }
         .race-grid-house,
-        .race-grid-senate  { grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); }
+        .race-grid-senate,
+        .race-grid-judicial { grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); }
 
         /* Card hover */
         .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
@@ -676,9 +883,10 @@ export default function BalanceOfPowerPage() {
 
         {!loading && !error && (
           <>
-            <SupermajorityHero senateSeats={senate} houseSeats={house} lastUpdated={lastUpdated} />
+            <SupermajorityHero senateSeats={senate} houseSeats={house} lastUpdated={lastUpdated} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} />
             <BattlegroundSection chamber="house"  seats={house}  />
             <BattlegroundSection chamber="senate" seats={senate} />
+            <JudicialBattlegroundSection coaRaces={coaRaces} scRaces={scRaces} />
           </>
         )}
       </div>
