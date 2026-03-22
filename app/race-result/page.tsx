@@ -1,194 +1,343 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { TEAM_UP_NC_GIDS } from "../../lib/config";
 import type { RaceSummary } from "../../lib/parseResults";
+import type { PriorSeat } from "../../lib/priorResults";
+import { isFeaturedCandidate } from "../../lib/featuredCandidates";
 
+// ─── Brand tokens (matches balance-of-power) ─────────────────────────────────
+const C = {
+  primary:        "#042567",
+  primaryMid:     "#233C7E",
+  secondary:      "#A6266E",
+  bg:             "#fcf8f8",
+  surface:        "#ffffff",
+  surfaceLow:     "#f7f3f2",
+  surfaceTrack:   "#f1eded",
+  surfaceHigh:    "#e5e2e1",
+  onBg:           "#1c1b1c",
+  outline:        "#757681",
+  outlineVariant: "#c5c6d2",
+} as const;
+
+type Source = "2024" | "2026-clean";
+
+const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
 const POLL_INTERVAL = 60_000;
 
 type ApiResponse = {
   races: RaceSummary[];
+  priorSeats: Record<string, PriorSeat>;
   updatedAt: string;
 };
 
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
+type SeatStatus = "FLIPPED" | "LEADING_FLIP" | "HOLD" | "OPEN";
+
+type SeatVisual = {
+  gid: string;
+  districtLabel: string;
+  ogl: string;
+  leaderName: string;
+  leaderParty: string;
+  runnerUpName: string;
+  runnerUpParty: string;
+  margin: number | null;
+  pctReporting: number;
+  totalVotes: number;
+  incumbentParty: string | null;
+  priorMargin: number | null;
+  priorTotalVotes: number | null;
+  seatStatus: SeatStatus;
+  allCandidates: { name: string; party: string; pct: number }[];
+};
+
+// "HAYES, RACHEL" → "Rachel Hayes"
+function formatName(raw: string): string {
+  const parts = raw.split(",").map((s) => s.trim());
+  if (parts.length === 2) {
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    return `${cap(parts[1])} ${cap(parts[0])}`;
+  }
+  return raw;
 }
 
-function formatPct(value: number): string {
-  return `${value.toFixed(1)}%`;
+function formatDistrictLabel(race: RaceSummary): string {
+  const match = race.cnm.match(/DISTRICT\s+0*([0-9]+)/i);
+  if (!match) return race.cnm.split(" - ")[0] ?? race.cnm;
+  const num = match[1];
+  if (race.ogl === "NCS") return `NC Senate District ${num}`;
+  if (race.ogl === "NCH") return `NC House District ${num}`;
+  return race.cnm;
 }
 
-function normalizePct(value: number): number {
-  return value <= 1 ? value * 100 : value;
+function toSeatVisual(race: RaceSummary, priorSeats: Record<string, PriorSeat>): SeatVisual {
+  const leader   = race.candidates[0];
+  const runnerUp = race.candidates[1];
+  const prior    = priorSeats[race.cnm] ?? null;
+  const leaderParty = leader?.party ?? "";
+  const hasReporting = race.precincts.reporting > 0;
+
+  let seatStatus: SeatStatus = "OPEN";
+  if (prior && hasReporting) {
+    const flipped = leaderParty !== "" && leaderParty !== prior.winnerParty;
+    seatStatus = flipped
+      ? race.precincts.pct >= 0.9 ? "FLIPPED" : "LEADING_FLIP"
+      : "HOLD";
+  }
+
+  return {
+    gid:             race.gid,
+    districtLabel:   formatDistrictLabel(race),
+    ogl:             race.ogl,
+    leaderName:      leader?.name    ?? "",
+    leaderParty,
+    runnerUpName:    runnerUp?.name  ?? "",
+    runnerUpParty:   runnerUp?.party ?? "",
+    margin:          race.margin,
+    pctReporting:    race.precincts.pct,
+    totalVotes:      race.totalVotes,
+    incumbentParty:  prior?.winnerParty   ?? null,
+    priorMargin:     prior?.margin        ?? null,
+    priorTotalVotes: prior?.totalVotes    ?? null,
+    seatStatus,
+    allCandidates: race.candidates.map((c) => ({ name: c.name, party: c.party, pct: c.pct * 100 })),
+  };
 }
 
-function raceStatusLabel(race: RaceSummary, targetParty?: string): string {
-  if (targetParty) {
-    const leaderParty = race.candidates[0]?.party;
-    const targetLeading = leaderParty === targetParty;
-    if (race.called) {
-      return targetLeading ? "WIN" : "LOSS";
+function leaderCircleStyle(
+  seatStatus: SeatStatus,
+  leaderParty: string,
+  margin: number | null,
+  pctReporting: number,
+) {
+  const isFlip = seatStatus === "FLIPPED" || seatStatus === "LEADING_FLIP";
+  if (isFlip) {
+    if (leaderParty === "DEM") {
+      return seatStatus === "FLIPPED"
+        ? { bg: "#16a34a", border: "#15803d", text: "#ffffff" }
+        : { bg: "#bbf7d0", border: "#86efac", text: "#166534" };
+    } else {
+      return seatStatus === "FLIPPED"
+        ? { bg: "#dc2626", border: "#b91c1c", text: "#ffffff" }
+        : { bg: "#fecaca", border: "#fca5a5", text: "#991b1b" };
     }
-    return targetLeading ? "WINNING" : "LOSING";
   }
-
-  if (race.called) {
-    return "Called";
+  if (margin === null || pctReporting < 0.05) {
+    return { bg: C.surfaceHigh, border: C.outlineVariant, text: C.outline };
   }
-  return "Leading";
+  if (pctReporting >= 0.5 && margin > 0.05) {
+    return { bg: "#bbf7d0", border: "#86efac", text: "#166534" };
+  }
+  if (pctReporting >= 0.25 && margin > 0.02) {
+    return { bg: "#dcfce7", border: "#bbf7d0", text: "#166534" };
+  }
+  if (pctReporting >= 0.1 && margin !== null && margin >= 0) {
+    return { bg: "#f0fdf4", border: "#bbf7d0", text: "#166534" };
+  }
+  return { bg: C.surfaceHigh, border: C.outlineVariant, text: C.outline };
 }
 
-function formatShortRaceLabel(race: RaceSummary): string {
-  const districtMatch = race.cnm.match(/DISTRICT\s+0*([0-9]+)/i);
-  if (districtMatch) {
-    const district = districtMatch[1];
-    if (race.ogl === "NCS") return `SD ${district}`;
-    if (race.ogl === "NCH") return `HD ${district}`;
+const runnerUpCircle = { bg: C.surfaceHigh, border: C.outlineVariant, text: C.outline };
+
+function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
+  const voteDiff =
+    seat.margin !== null && seat.totalVotes > 0
+      ? Math.round(seat.margin * seat.totalVotes).toLocaleString()
+      : null;
+
+  const showFooter = source !== "2024" && seat.priorMargin !== null;
+  const leaderStyle = leaderCircleStyle(seat.seatStatus, seat.leaderParty, seat.margin, seat.pctReporting);
+
+  const isFlipEvent = seat.seatStatus === "FLIPPED" || seat.seatStatus === "LEADING_FLIP";
+  const isDemFlip   = isFlipEvent && seat.leaderParty === "DEM";
+  const isRepFlip   = isFlipEvent && seat.leaderParty === "REP";
+  const confirmed   = seat.seatStatus === "FLIPPED";
+
+  const holdParty = seat.incumbentParty ?? seat.leaderParty;
+  let sb: { label: string; bg: string; color: string } = { label: `${holdParty} HOLD`, bg: `${C.primaryMid}18`, color: C.primaryMid };
+  if (source !== "2024" && seat.pctReporting === 0 && seat.incumbentParty) {
+    sb = seat.incumbentParty === "DEM"
+      ? { label: "DEM HOLD", bg: `${C.primaryMid}18`, color: C.primaryMid }
+      : { label: "FLIP", bg: "#fef9c3", color: "#854d0e" };
+  } else if (seat.seatStatus === "OPEN") {
+    sb = { label: "OPEN", bg: C.surfaceHigh, color: C.outline };
+  } else if (isDemFlip) {
+    sb = confirmed
+      ? { label: "↺ DEM FLIPS SEAT",    bg: "#dcfce7", color: "#15803d" }
+      : { label: "↺ DEM LEADING (FLIP)", bg: "#bbf7d0", color: "#166534" };
+  } else if (isRepFlip) {
+    sb = confirmed
+      ? { label: "↺ REP FLIPS SEAT",    bg: "#fee2e2", color: "#dc2626" }
+      : { label: "↺ REP LEADING (FLIP)", bg: "#fecaca", color: "#b91c1c" };
   }
 
-  if (race.ogl === "SPC") return "NC Supreme Court";
-
-  return race.cnm.split(" - ")[0] ?? race.cnm;
-}
-
-function getDemCandidate(race?: RaceSummary): RaceSummary["candidates"][number] | undefined {
-  return race?.candidates.find((candidate) => candidate.party === "DEM");
-}
-
-function CandidateRow({ name, party, votes, pct, compact, dark, highlighted }: {
-  name: string;
-  party: string;
-  votes: number;
-  pct: number;
-  compact: boolean;
-  dark: boolean;
-  highlighted?: boolean;
-}) {
-  const fg = dark ? "#f9fafb" : "#111827";
-  const subtle = dark ? "#cbd5e1" : "#4b5563";
-  const barBg = dark ? "#1f2937" : "#e5e7eb";
-  const barFill = party === "DEM" ? "#1d4ed8" : party === "REP" ? "#dc2626" : "#6b7280";
-  const highlightBg = dark ? "rgba(29, 78, 216, 0.2)" : "rgba(219, 234, 254, 0.8)";
-  const highlightBorder = dark ? "#60a5fa" : "#1d4ed8";
-  const percent = normalizePct(pct);
+  const flipBorderColor = isDemFlip ? "#16a34a" : isRepFlip ? "#dc2626" : null;
+  const flipBorder = flipBorderColor
+    ? `3px solid ${flipBorderColor}`
+    : `1px solid ${C.outlineVariant}50`;
 
   return (
     <div
+      className="race-card"
       style={{
-        marginTop: compact ? 8 : 10,
-        padding: highlighted ? "6px 8px" : undefined,
-        borderRadius: highlighted ? 8 : undefined,
-        border: highlighted ? `1px solid ${highlightBorder}` : undefined,
-        background: highlighted ? highlightBg : undefined,
+        background: C.surface,
+        borderRadius: 12,
+        borderLeft: flipBorder,
+        borderRight: `1px solid ${C.outlineVariant}50`,
+        borderTop: `1px solid ${C.outlineVariant}50`,
+        borderBottom: `1px solid ${C.outlineVariant}50`,
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ color: fg, fontSize: compact ? 13 : 14, fontWeight: 600 }}>
-          {name} <span style={{ color: subtle, fontWeight: 500 }}>({party || "N/A"})</span>
-          {highlighted && <span style={{ marginLeft: 6, fontSize: 11, color: highlightBorder }}>Target</span>}
+      {/* Card header */}
+      <div
+        style={{
+          padding: "10px 14px",
+          background: C.surfaceLow,
+          borderBottom: `1px solid ${C.outlineVariant}30`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.primary }}>
+            {seat.districtLabel}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 999,
+              padding: "2px 7px",
+              background: sb.bg,
+              color: sb.color,
+            }}
+          >
+            {sb.label}
+          </span>
         </div>
-        <div style={{ color: fg, fontSize: compact ? 12 : 13 }}>
-          {formatNumber(votes)} ({formatPct(percent)})
+        <span style={{ fontSize: 10, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
+          {Math.round(seat.pctReporting * 100)}% Reporting
+        </span>
+      </div>
+
+      {/* Candidates */}
+      <div style={{ padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+        {seat.allCandidates.map((cand) => {
+          const isLeader = cand.party === seat.leaderParty;
+          const isD      = cand.party === "DEM";
+          const barColor = isD ? C.primaryMid : C.secondary;
+          const circle   = isLeader ? leaderStyle : runnerUpCircle;
+          return (
+            <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  border: `2px solid ${circle.border}`,
+                  background: circle.bg,
+                  flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, fontWeight: 900, color: circle.text,
+                  overflow: "hidden",
+                }}
+              >
+                {isFeaturedCandidate(formatName(cand.name))
+                  ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : cand.party || "?"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
+                    {formatName(cand.name)}{" "}
+                    <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
+                  </span>
+                  <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>
+                    {cand.pct > 0 ? `${cand.pct.toFixed(1)}%` : "—"}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: C.surfaceTrack, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${cand.pct}%`, background: barColor, borderRadius: 3 }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Vote margin */}
+        {voteDiff && (
+          <div
+            style={{
+              fontSize: 14, color: C.outline, fontWeight: 400,
+              textAlign: "center",
+              borderTop: `1px solid ${C.outlineVariant}30`,
+              paddingTop: 8,
+            }}
+          >
+            Margin: {voteDiff} votes | {(seat.margin! * 100).toFixed(2)}%
+          </div>
+        )}
+      </div>
+
+      {/* Footer — prior result (always visible in 2026 mode) */}
+      {showFooter && (
+        <div
+          style={{
+            padding: "8px 14px",
+            background: `${C.primary}08`,
+            borderTop: `1px solid ${C.outlineVariant}30`,
+            fontSize: 10, fontWeight: 700, textAlign: "center",
+            color: C.outline, letterSpacing: "0.04em",
+          }}
+        >
+          2024:{" "}
+          <span
+            style={{
+              color: seat.incumbentParty === "DEM" ? C.primaryMid
+                   : seat.incumbentParty === "REP" ? C.secondary
+                   : C.outline,
+              fontWeight: 900,
+            }}
+          >
+            {seat.incumbentParty ?? "?"}
+          </span>
+          {seat.priorTotalVotes && seat.priorMargin !== null
+            ? ` +${Math.round(seat.priorMargin * seat.priorTotalVotes).toLocaleString()} votes · `
+            : " · "}
+          +{(seat.priorMargin! * 100).toFixed(1)}%
         </div>
-      </div>
-      <div style={{ marginTop: 4, backgroundColor: barBg, borderRadius: 999, height: compact ? 7 : 9, overflow: "hidden" }}>
-        <div style={{ width: `${Math.max(0, Math.min(100, percent))}%`, backgroundColor: barFill, height: "100%" }} />
-      </div>
+      )}
     </div>
   );
 }
 
-function RaceCard({
-  race,
-  compact,
-  dark,
-  titleOverride,
-  highlightParty,
-}: {
-  race: RaceSummary;
-  compact: boolean;
-  dark: boolean;
-  titleOverride?: string;
-  highlightParty?: string;
-}) {
-  const bg = dark ? "#0f172a" : "#ffffff";
-  const border = dark ? "#334155" : "#d1d5db";
-  const fg = dark ? "#f9fafb" : "#111827";
-  const subtle = dark ? "#cbd5e1" : "#4b5563";
-  const badgeBg = race.called ? (dark ? "#14532d" : "#dcfce7") : dark ? "#1e3a8a" : "#dbeafe";
-  const badgeFg = race.called ? (dark ? "#dcfce7" : "#14532d") : dark ? "#dbeafe" : "#1e3a8a";
-  const leader = race.candidates[0];
-  const status = raceStatusLabel(race, highlightParty);
-  const isLoss = status === "LOSS";
-  const resolvedBadgeBg =
-    isLoss
-      ? dark
-        ? "#7f1d1d"
-        : "#fee2e2"
-      : badgeBg;
-  const resolvedBadgeFg =
-    isLoss
-      ? dark
-        ? "#fecaca"
-        : "#991b1b"
-      : badgeFg;
+function normalizeToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z]/g, "");
+}
 
-  return (
-    <article
-      style={{
-        border: `1px solid ${border}`,
-        background: bg,
-        borderRadius: 12,
-        padding: compact ? 12 : 14,
-        boxShadow: dark ? "none" : "0 8px 24px rgba(17, 24, 39, 0.06)",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <h3 style={{ margin: 0, color: fg, fontSize: compact ? 15 : 16 }}>{titleOverride ?? race.cnm}</h3>
-        <span style={{ background: resolvedBadgeBg, color: resolvedBadgeFg, borderRadius: 999, padding: "3px 8px", fontSize: 12, fontWeight: 700 }}>
-          {status}
-        </span>
-      </div>
-
-      <div style={{ marginTop: 6, color: subtle, fontSize: compact ? 12 : 13 }}>
-        {race.precincts.reporting} of {race.precincts.total} precincts reporting ({formatPct(race.precincts.pct * 100)})
-      </div>
-
-      {leader && (
-        <div style={{ marginTop: 6, color: subtle, fontSize: compact ? 12 : 13 }}>
-          Leader: {leader.name} ({leader.party})
-          {race.margin !== null ? ` | Margin ${formatPct(race.margin * 100)}` : ""}
-        </div>
-      )}
-
-      <div style={{ marginTop: compact ? 6 : 8 }}>
-        {race.candidates.map((candidate) => (
-          <CandidateRow
-            key={`${race.gid}-${candidate.name}`}
-            name={candidate.name}
-            party={candidate.party}
-            votes={candidate.votes}
-            pct={candidate.pct}
-            compact={compact}
-            dark={dark}
-            highlighted={highlightParty === candidate.party}
-          />
-        ))}
-      </div>
-    </article>
+function findRaceByLastName(races: RaceSummary[], lastName: string): RaceSummary | undefined {
+  const needle = normalizeToken(lastName);
+  return races.find((race) =>
+    race.candidates.some((c) => {
+      const tokens = c.name.toLowerCase().split(/\s+/).map(normalizeToken).filter(Boolean);
+      return (tokens.at(-1) ?? "") === needle;
+    }),
   );
 }
 
 function RaceResultPageContent() {
   const searchParams = useSearchParams();
-  const gid = searchParams.get("gid");
-  const view = searchParams.get("view");
-  const compact = searchParams.get("compact") === "true";
-  const dark = searchParams.get("theme") === "dark";
+  const nameParam = searchParams.get("name");
 
+  const [source, setSource] = useState<Source>("2024");
   const [races, setRaces] = useState<RaceSummary[]>([]);
+  const [priorSeats, setPriorSeats] = useState<Record<string, PriorSeat>>({});
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -196,10 +345,11 @@ function RaceResultPageContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/results");
+        const res = await fetch(`/api/results?source=${source}`);
         if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
         const data = (await res.json()) as ApiResponse;
         setRaces(data.races ?? []);
+        setPriorSeats(data.priorSeats ?? {});
         setLastUpdated(data.updatedAt ?? "");
         setError("");
       } catch (err) {
@@ -209,125 +359,92 @@ function RaceResultPageContent() {
       }
     };
 
+    setLoading(true);
     fetchData();
+
+    if (!POLL_ACTIVE) return;
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [source]);
 
-  const byGid = useMemo(() => {
-    const map = new Map<string, RaceSummary>();
-    for (const race of races) map.set(race.gid, race);
-    return map;
-  }, [races]);
+  const race = nameParam ? findRaceByLastName(races, nameParam) : undefined;
+  const seat = race ? toSeatVisual(race, priorSeats) : null;
 
-  const teamCards = useMemo(() => {
-    const trackedGids = TEAM_UP_NC_GIDS.filter(
-      (gidValue) => gidValue && !gidValue.includes("REPLACE_WITH"),
-    );
-
-    const cards = trackedGids.map((gidValue) => ({
-      gid: gidValue,
-      race: byGid.get(gidValue),
-    }));
-
-    return cards.sort((a, b) => {
-      const marginA = a.race?.margin ?? Number.POSITIVE_INFINITY;
-      const marginB = b.race?.margin ?? Number.POSITIVE_INFINITY;
-      return marginA - marginB;
-    });
-  }, [byGid]);
-
-  const teamLeads = teamCards.filter((card) => card.race?.candidates[0]?.party === "DEM").length;
-
-  const singleRace = gid ? byGid.get(gid) : undefined;
-
-  const bg = dark ? "#020617" : "linear-gradient(180deg, #f3f4f6 0%, #ffffff 45%, #f9fafb 100%)";
-  const fg = dark ? "#f9fafb" : "#111827";
-  const subtle = dark ? "#cbd5e1" : "#4b5563";
+  const tabs: { label: string; src: Source }[] = [
+    { label: "2024 Final", src: "2024" },
+    { label: "2026 Election Night", src: "2026-clean" },
+  ];
 
   return (
-    <main style={{ minHeight: "100vh", background: bg, color: fg, padding: compact ? 12 : 18 }}>
-      <section style={{ maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: compact ? 10 : 14 }}>
-          <h1 style={{ margin: 0, fontSize: compact ? 20 : 24 }}>
-            {view === "teamupnc" ? "Team Up NC Results" : "Race Result"}
-          </h1>
-          <div style={{ fontSize: 12, color: subtle }}>
-            {lastUpdated ? `Last updated: ${new Date(lastUpdated).toLocaleTimeString()}` : "Waiting for first update..."}
-          </div>
+    <main style={{ background: "transparent", minHeight: "100vh", padding: 16 }}>
+      <style>{`
+        .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
+        .race-card:hover { box-shadow: 0 8px 24px rgba(4,37,103,0.13) !important; transform: translateY(-2px); }
+      `}</style>
+
+      {/* Toggle */}
+      <div
+        style={{
+          display: "inline-flex",
+          border: `1px solid ${C.outlineVariant}`,
+          borderRadius: 8,
+          overflow: "hidden",
+          marginBottom: 16,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {tabs.map((tab) => {
+          const active = source === tab.src;
+          return (
+            <button
+              key={tab.src}
+              onClick={() => setSource(tab.src)}
+              style={{
+                padding: "6px 14px",
+                border: "none",
+                borderRight: tab.src === "2024" ? `1px solid ${C.outlineVariant}` : "none",
+                background: active ? C.primary : C.surface,
+                color: active ? "#fff" : C.outline,
+                cursor: "pointer",
+                fontWeight: active ? 700 : 500,
+                fontSize: 12,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {loading && <p style={{ color: C.outline, fontSize: 14 }}>Loading…</p>}
+      {error   && <p style={{ color: C.secondary, fontSize: 14 }}>{error}</p>}
+
+      {!loading && !error && seat && (
+        <RaceWidget seat={seat} source={source} />
+      )}
+
+      {!loading && !error && !seat && nameParam && (
+        <p style={{ color: C.outline, fontSize: 14 }}>No race found for &ldquo;{nameParam}&rdquo;.</p>
+      )}
+
+      {!loading && !error && !nameParam && (
+        <p style={{ color: C.outline, fontSize: 14 }}>Pass a candidate last name with ?name=lastname</p>
+      )}
+
+      {lastUpdated && (
+        <div style={{ marginTop: 12, fontSize: 10, color: C.outline }}>
+          {source === "2024" ? "2024 Final Results" : `Updated ${new Date(lastUpdated).toLocaleTimeString()}`}
         </div>
-
-        {loading && <p style={{ color: subtle }}>Loading live race data...</p>}
-        {error && <p style={{ color: dark ? "#fca5a5" : "#b91c1c" }}>{error}</p>}
-
-        {!loading && !error && view === "teamupnc" && (
-          <>
-            <div style={{ marginBottom: compact ? 10 : 12, color: subtle, fontSize: compact ? 13 : 14 }}>
-              {teamLeads} of {teamCards.length} Team Up NC races currently have a DEM lead
-            </div>
-
-            <div style={{ display: "grid", gap: compact ? 8 : 12 }}>
-              {teamCards.map(({ gid: watchedGid, race }) =>
-                race ? (
-                  <div key={race.gid}>
-                    <div style={{ marginBottom: 6, color: subtle, fontSize: compact ? 12 : 13 }}>
-                      {(() => {
-                        const demCandidate = getDemCandidate(race);
-                        const demLeading = race.candidates[0]?.party === "DEM";
-                        if (!demCandidate) return "No DEM candidate found in this race.";
-                        return demLeading
-                          ? `DEM target: ${demCandidate.name} is currently leading.`
-                          : `DEM target: ${demCandidate.name} is currently trailing.`;
-                      })()}
-                    </div>
-                    <RaceCard
-                      race={race}
-                      compact={compact}
-                      dark={dark}
-                      highlightParty="DEM"
-                      titleOverride={formatShortRaceLabel(race)}
-                    />
-                  </div>
-                ) : (
-                  <article
-                    key={watchedGid}
-                    style={{
-                      border: `1px solid ${dark ? "#334155" : "#d1d5db"}`,
-                      borderRadius: 12,
-                      background: dark ? "#0f172a" : "#ffffff",
-                      padding: compact ? 12 : 14,
-                    }}
-                  >
-                    <h3 style={{ margin: 0, fontSize: compact ? 15 : 16 }}>GID {watchedGid}</h3>
-                    <p style={{ margin: "8px 0 0", color: subtle, fontSize: compact ? 12 : 13 }}>
-                      Awaiting race data for GID {watchedGid}
-                    </p>
-                  </article>
-                ),
-              )}
-            </div>
-          </>
-        )}
-
-        {!loading && !error && view !== "teamupnc" && gid && singleRace && (
-          <RaceCard race={singleRace} compact={compact} dark={dark} />
-        )}
-
-        {!loading && !error && view !== "teamupnc" && gid && !singleRace && (
-          <p style={{ color: subtle }}>No race found for GID {gid}.</p>
-        )}
-
-        {!loading && !error && !view && !gid && (
-          <p style={{ color: subtle }}>Pass a GID with ?gid=XXXX or use ?view=teamupnc.</p>
-        )}
-      </section>
+      )}
     </main>
   );
 }
 
 export default function RaceResultPage() {
   return (
-    <Suspense fallback={<main style={{ padding: 16 }}>Loading race results...</main>}>
+    <Suspense fallback={<main style={{ padding: 16 }}>Loading…</main>}>
       <RaceResultPageContent />
     </Suspense>
   );

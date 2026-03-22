@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { Montserrat } from "next/font/google";
+
+const montserrat = Montserrat({ subsets: ["latin"], display: "swap" });
 
 export const metadata = {
   title: "NC Election Night Dashboard",
@@ -7,8 +10,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, fontFamily: "ui-sans-serif, system-ui, -apple-system" }}>
+    <html lang="en" className={montserrat.className}>
+      <body style={{ margin: 0 }}>
         {children}
       </body>
     </html>

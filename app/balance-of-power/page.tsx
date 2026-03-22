@@ -31,6 +31,10 @@ const BTN = {
   arrowSize:   10,  // ↓ arrow font size inside circle (px)
 } as const;
 
+type Source = "2024" | "2026" | "2026-clean";
+
+const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
+
 type ApiResponse = {
   races: RaceSummary[];
   priorSeats: Record<string, PriorSeat>;
@@ -190,8 +194,8 @@ const runnerUpCircle = { bg: C.surfaceHigh, border: C.outlineVariant, text: C.ou
 // ─── Shared pill color logic ──────────────────────────────────────────────────
 // Yellow while results are still coming in (2026, <90% reporting).
 // Red = REP advantage holds. Green = DEM broke/flipped.
-function pillStyle(repAdvantage: boolean, pctReporting: number, src: "2024" | "2026") {
-  if (src === "2026" && pctReporting < 0.9) {
+function pillStyle(repAdvantage: boolean, pctReporting: number, src: Source) {
+  if (src !== "2024" && pctReporting < 0.9) {
     return { bg: "#fef3c7", color: "#92400e" };
   }
   return repAdvantage
@@ -200,7 +204,7 @@ function pillStyle(repAdvantage: boolean, pctReporting: number, src: "2024" | "2
 }
 
 // ─── Judicial Bar (hero row, same style as ChamberBar) ───────────────────────
-function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; scRaces: RaceSummary[]; source: "2024" | "2026" }) {
+function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; scRaces: RaceSummary[]; source: Source }) {
   void coaRaces;
   void scRaces;
 
@@ -289,8 +293,8 @@ function SupermajorityHero({
   houseSeats: SeatVisual[];
   coaRaces: RaceSummary[];
   scRaces: RaceSummary[];
-  source: "2024" | "2026";
-  onSourceChange: (s: "2024" | "2026") => void;
+  source: Source;
+  onSourceChange: (s: Source) => void;
   countdown: number;
   lastUpdated: string;
 }) {
@@ -320,15 +324,15 @@ function SupermajorityHero({
   const senateFlipsNeeded = senate.flipsToBreakRep;
 
   let statusLabel: string;
-  let statusColor: string;
+  let statusColorLight: string; // for light/grey card backgrounds
   if (houseBroken && senateBroken) {
-    statusLabel = "SUPERMAJORITY BROKEN"; statusColor = "#bbf7d0";
+    statusLabel = "SUPERMAJORITY BROKEN"; statusColorLight = "#15803d";
   } else if (houseBroken || senateBroken) {
-    statusLabel = "PARTIALLY BROKEN";     statusColor = "#bbf7d0";
+    statusLabel = "PARTIALLY BROKEN";     statusColorLight = "#15803d";
   } else if (houseFlipsNeeded !== null || senateFlipsNeeded !== null) {
-    statusLabel = "IN JEOPARDY";          statusColor = "#ffd8e6";
+    statusLabel = "IN JEOPARDY";          statusColorLight = "#b45309";
   } else {
-    statusLabel = "BALANCED";             statusColor = "#e2e8f0";
+    statusLabel = "BALANCED";             statusColorLight = "#475569";
   }
 
   function narrative() {
@@ -380,7 +384,7 @@ function SupermajorityHero({
     }
     const barNote = noteParts.join(" · ");
 
-    const outcomeLabel = source === "2026"
+    const outcomeLabel = source !== "2024"
       ? avgPct < 0.9
         ? `SUPERMAJORITY (${stats.cfg.supermajority}) · ${raceSummary || "RESULTS COMING IN"}`
         : `SUPERMAJORITY (${stats.cfg.supermajority}) ${repHasSuper ? "HELD" : "BROKEN"} · ${raceSummary}`
@@ -419,10 +423,10 @@ function SupermajorityHero({
               left: `${stats.superPct}%`,
               top: 0, bottom: 0,
               width: 3,
-              background: (source === "2026" && avgPct < 0.9) ? "rgba(255,255,255,0.75)" : outcomeColor,
+              background: (source !== "2024" && avgPct < 0.9) ? "rgba(255,255,255,0.75)" : outcomeColor,
               transform: "translateX(-50%)",
               zIndex: 10,
-              boxShadow: (source === "2026" && avgPct < 0.9) ? "none" : `0 0 6px ${outcomeColor}80`,
+              boxShadow: (source !== "2024" && avgPct < 0.9) ? "none" : `0 0 6px ${outcomeColor}80`,
             }} />
             {/* DEM count inside bar */}
             <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
@@ -439,78 +443,99 @@ function SupermajorityHero({
     );
   }
 
+  const updatedTime = lastUpdated
+    ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const updatedDate = lastUpdated
+    ? new Date(lastUpdated).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
+    : null;
+
+  // Subtitle under heading: NCSBE attribution + countdown
+  const ncsbeSub = source === "2024"
+    ? "NCSBE Data as of Nov 5, 2024"
+    : updatedTime
+      ? `NCSBE Data as of ${updatedTime}${POLL_ACTIVE && source === "2026-clean" ? ` · Updating in ${countdown > 0 ? countdown + "s" : "…"}` : ""}`
+      : `NCSBE Data as of ${updatedDate ?? "Nov 3, 2026"}`;
+
+  // Grey bar content: status summary inside the card
+  const cardStatus = source === "2024" ? (
+    <>
+      <span style={{ fontWeight: 800, fontSize: 11, color: statusColorLight, letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>{statusLabel}</span>
+      <span style={{ fontSize: 12, color: C.outline, fontWeight: 400 }}>{narrative()}</span>
+    </>
+  ) : source === "2026-clean" && POLL_ACTIVE ? (
+    <>
+      <span style={{ background: C.secondary, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 999, padding: "2px 8px", letterSpacing: "0.07em", flexShrink: 0 }}>LIVE</span>
+      <span style={{ fontSize: 12, color: C.outline }}>{countdown > 0 ? `Updating in ${countdown}s` : "Updating…"}</span>
+    </>
+  ) : source === "2026" ? (
+    <span style={{ fontSize: 12, color: C.outline, fontStyle: "italic" }}>Preview mode · mock data with early returns</span>
+  ) : (
+    <span style={{ fontSize: 12, color: C.outline }}>Nov 3, 2026 · Results pending</span>
+  );
+
+  const TABS: { value: Source; label: string }[] = [
+    { value: "2026-clean", label: "Election Night" },
+    { value: "2026",       label: "Preview"        },
+    { value: "2024",       label: "2024 Results"   },
+  ];
+
   return (
     <section style={{ marginBottom: 48 }}>
-      {/* Thin status banner */}
-      <div style={{ background: C.primary, borderRadius: "10px 10px 0 0", padding: "0 24px", height: 50, display: "flex", alignItems: "center", gap: 12, overflow: "hidden", boxShadow: "0 4px 24px rgba(4,37,103,0.25)" }}>
-        {source === "2026" ? (
-          <>
-            <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
-              LIVE ANALYSIS
-            </span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
-              {countdown > 0 ? `Updating in ${countdown}s` : "Updating…"}
-            </span>
-          </>
-        ) : (
-          <>
-            <span style={{ background: C.secondary, color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "3px 10px", letterSpacing: "0.08em", flexShrink: 0 }}>
-              2024 FINAL RESULTS
-            </span>
-            <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>
-              Supermajority Status:
-            </span>
-            <span style={{ fontWeight: 900, fontSize: 13, color: statusColor, flexShrink: 0 }}>
-              {statusLabel}
-            </span>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontWeight: 500 }}>
-              {narrative()}
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* Full-width Election Watch card */}
-      <div style={{ background: C.surface, borderRadius: "0 0 12px 12px", border: `1px solid ${C.outlineVariant}40`, borderTop: "none", padding: "28px 32px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 28 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/donkey-logo.png" alt="" style={{ height: 32, width: "auto" }} />
-            Election Watch
-          </h1>
-          {/* Source toggle */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {(["2024", "2026"] as const).map((yr) => {
-              const isActive = source === yr;
-              const label = yr === "2024" ? "2024 Results" : "2026 Preview";
-              const sub   = yr === "2024"
-                ? "Nov 5, 2024 · Final"
-                : lastUpdated
-                  ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · Live"
-                  : "Nov 3, 2026 · Pending";
-              return (
-                <button
-                  key={yr}
-                  onClick={() => onSourceChange(yr)}
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                    padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-                    border: `1px solid ${isActive ? C.primary : C.outlineVariant}`,
-                    background: isActive ? C.primary : "transparent",
-                    color: isActive ? "#fff" : C.outline,
-                    transition: "background 0.15s, border-color 0.15s",
-                  }}
-                >
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em" }}>{label}</span>
-                  <span style={{ fontSize: 9, fontWeight: 500, opacity: 0.8 }}>{sub}</span>
-                </button>
-              );
-            })}
+      {/* Section header */}
+      <div className="ew-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", gap: 12 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/donkey-logo.png" alt="" style={{ width: "auto", height: 52, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: C.primary }}>
+              Election Watch
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: C.outline, fontWeight: 400 }}>
+              {ncsbeSub}
+            </p>
           </div>
         </div>
-        <ChamberBar label="House" stats={house} chamberKey="house" seats={houseSeats} />
-        <ChamberBar label="Senate" stats={senate} chamberKey="senate" seats={senateSeats} />
-        <JudicialBar coaRaces={coaRaces} scRaces={scRaces} source={source} />
+
+        {/* Tabs — segmented control, stacks vertically on mobile */}
+        <div className="ew-tabs" style={{ border: `1px solid ${C.outlineVariant}`, borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+          {TABS.map(({ value, label }, i) => {
+            const isActive = source === value;
+            return (
+              <button
+                key={value}
+                onClick={() => onSourceChange(value)}
+                className="ew-tab-btn"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "6px 13px",
+                  cursor: "pointer", fontFamily: "inherit",
+                  border: "none",
+                  borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none",
+                  background: isActive ? C.primary : C.surface,
+                  color: isActive ? "#fff" : C.outline,
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bars card */}
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.outlineVariant}40`, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        {/* Grey status bar */}
+        <div style={{ background: C.surfaceLow, borderBottom: `1px solid ${C.outlineVariant}30`, padding: "10px 24px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {cardStatus}
+        </div>
+        {/* Bars */}
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 28 }}>
+          <ChamberBar label="House" stats={house} chamberKey="house" seats={houseSeats} />
+          <ChamberBar label="Senate" stats={senate} chamberKey="senate" seats={senateSeats} />
+          <JudicialBar coaRaces={coaRaces} scRaces={scRaces} source={source} />
+        </div>
       </div>
     </section>
   );
@@ -524,7 +549,7 @@ function BattlegroundSection({
 }: {
   chamber: "senate" | "house";
   seats: SeatVisual[];
-  source: "2024" | "2026";
+  source: Source;
 }) {
   const config = CHAMBER_CONFIG[chamber];
   const repLeads = seats.filter((s) => seatCurrentParty(s) === "REP");
@@ -584,7 +609,7 @@ function BattlegroundSection({
               : null;
 
           // Hover footer — show 2024 prior result in 2026 mode
-          const footerText = source === "2026" && seat.priorMargin !== null;
+          const footerText = source !== "2024" && seat.priorMargin !== null;
 
           const leaderStyle = leaderCircleStyle(seat.seatStatus, seat.leaderParty, seat.margin, seat.pctReporting);
 
@@ -596,7 +621,7 @@ function BattlegroundSection({
 
           const holdParty = seat.incumbentParty ?? seat.leaderParty;
           let sb: { label: string; bg: string; color: string } = { label: `${holdParty} HOLD`, bg: `${C.primaryMid}18`, color: C.primaryMid };
-          if (source === "2026" && seat.pctReporting === 0 && seat.incumbentParty) {
+          if (source !== "2024" && seat.pctReporting === 0 && seat.incumbentParty) {
             // No votes yet — show prior-based label
             if (seat.incumbentParty === "DEM") {
               sb = { label: "DEM HOLD", bg: `${C.primaryMid}18`, color: C.primaryMid };
@@ -679,9 +704,9 @@ function BattlegroundSection({
                 )}
               </div>
 
-              {/* Hover footer — 2024 prior result */}
+              {/* Footer — 2024 prior result (always visible in 2026 mode) */}
               {footerText && (
-                <div className="card-footer" style={{ padding: "8px 14px", background: `${C.primary}08`, borderTop: `1px solid ${C.outlineVariant}30`, fontSize: 10, fontWeight: 700, textAlign: "center", color: C.outline, letterSpacing: "0.04em" }}>
+                <div style={{ padding: "8px 14px", background: `${C.primary}08`, borderTop: `1px solid ${C.outlineVariant}30`, fontSize: 10, fontWeight: 700, textAlign: "center", color: C.outline, letterSpacing: "0.04em" }}>
                   2024:{" "}
                   <span style={{ color: seat.incumbentParty === "DEM" ? C.primaryMid : seat.incumbentParty === "REP" ? C.secondary : C.outline, fontWeight: 900 }}>
                     {seat.incumbentParty ?? "?"}
@@ -791,32 +816,32 @@ function JudicialBattlegroundSection({
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>Judicial Races</h2>
           <p style={{ margin: "2px 0 0", fontSize: 14, color: C.outline, fontWeight: 500 }}>
-            NC Court of Appeals · NC Supreme Court
+            NC Supreme Court · NC Court of Appeals
           </p>
         </div>
       </div>
-
-      {coaRaces.length > 0 && (
-        <>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
-            Court of Appeals — {coaRaces.length} seat{coaRaces.length !== 1 ? "s" : ""}
-          </div>
-          <div className="race-grid race-grid-judicial" style={{ marginBottom: 32 }}>
-            {coaRaces.map((r) => (
-              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "CoA")} />
-            ))}
-          </div>
-        </>
-      )}
 
       {scRaces.length > 0 && (
         <>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
             Supreme Court — {scRaces.length} seat{scRaces.length !== 1 ? "s" : ""}
           </div>
-          <div className="race-grid race-grid-judicial">
+          <div className="race-grid race-grid-judicial" style={{ marginBottom: 32 }}>
             {scRaces.map((r) => (
               <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "NCSC")} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {coaRaces.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
+            Court of Appeals — {coaRaces.length} seat{coaRaces.length !== 1 ? "s" : ""}
+          </div>
+          <div className="race-grid race-grid-judicial">
+            {coaRaces.map((r) => (
+              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "CoA")} />
             ))}
           </div>
         </>
@@ -832,19 +857,13 @@ export default function BalanceOfPowerPage() {
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  const [source, setSource] = useState<"2024" | "2026">("2026");
+  const [source, setSource] = useState<Source>("2026-clean");
   const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
 
   useEffect(() => {
+    if (!POLL_ACTIVE) return;
     const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
     return () => clearInterval(tick);
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 400);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -866,6 +885,7 @@ export default function BalanceOfPowerPage() {
     };
     setLoading(true);
     fetchData();
+    if (!POLL_ACTIVE) return;
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [source]);
@@ -896,6 +916,15 @@ export default function BalanceOfPowerPage() {
           .status-card { min-width: unset !important; max-width: unset !important; }
         }
 
+        /* Election Watch header tabs */
+        .ew-tabs { display: flex; flex-direction: row; }
+        .ew-tab-btn { flex: 1; }
+        @media (max-width: 560px) {
+          .ew-header { flex-wrap: wrap; }
+          .ew-tabs { width: 100%; }
+          .ew-tab-btn { padding: 6px 8px !important; }
+        }
+
         /* Race card grids */
         .race-grid {
           display: grid;
@@ -908,19 +937,8 @@ export default function BalanceOfPowerPage() {
         /* Card hover */
         .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
         .race-card:hover { box-shadow: 0 8px 24px rgba(4,37,103,0.13) !important; transform: translateY(-2px); }
-        .card-footer { opacity: 0; transition: opacity 0.2s; }
-        .race-card:hover .card-footer { opacity: 1; }
       `}</style>
 
-      {showBackToTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          style={{ position: "fixed", bottom: 24, right: 24, background: C.primary, color: "#fff", border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 18, cursor: "pointer", zIndex: 100, boxShadow: "0 4px 12px rgba(4,37,103,0.35)", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
-          aria-label="Back to top"
-        >
-          ↑
-        </button>
-      )}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 48px" }}>
         {/* Page title row */}
         
