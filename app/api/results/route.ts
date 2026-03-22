@@ -23,10 +23,17 @@ export async function GET(request: Request): Promise<Response> {
       text = fs.readFileSync(stagingPath, "utf-8");
       priorFile = "prior_2024.json";
     } else if (source === "2026") {
-      // Preview/mock data — respects STAGING_2026_FILE env var for local testing.
-      const stagingFile = process.env.STAGING_2026_FILE ?? "staging_2026_clean.json";
-      const stagingPath = path.join(process.cwd(), "tests", stagingFile);
-      text = fs.readFileSync(stagingPath, "utf-8");
+      // Preview — fetches live NCSBE feed in production; falls back to local file for dev.
+      const NCSBE_URL = "https://er.ncsbe.gov/enr/20261103/data/results_0.txt";
+      try {
+        const ncsbeRes = await fetch(NCSBE_URL, { next: { revalidate: 60 } });
+        if (!ncsbeRes.ok) throw new Error(`NCSBE responded ${ncsbeRes.status}`);
+        text = await ncsbeRes.text();
+      } catch {
+        const stagingFile = process.env.STAGING_2026_FILE ?? "staging_2026_clean.json";
+        const stagingPath = path.join(process.cwd(), "tests", stagingFile);
+        text = fs.readFileSync(stagingPath, "utf-8");
+      }
       priorFile = "prior_2024.json";
     } else {
       // 2024 final results — always read from local static file
