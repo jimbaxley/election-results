@@ -204,9 +204,6 @@ function pillStyle(repAdvantage: boolean, pctReporting: number, src: Source) {
 
 // ─── Judicial Bar (hero row, same style as ChamberBar) ───────────────────────
 function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; scRaces: RaceSummary[]; source: Source }) {
-  void coaRaces;
-  void scRaces;
-
   const coa = COA_CONFIG;
   const sc  = SC_CONFIG;
 
@@ -215,8 +212,6 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
   const scDemPct  = (sc.current.dem  / sc.total)  * 100;
   const scRepPct  = (sc.current.rep  / sc.total)  * 100;
 
-  // Source-aware narrative
-  // Judicial has no live precinct data — pctReporting 0 keeps 2026 yellow, 1 makes 2024 final red
   const { bg: coaBg, color: coaColor } = pillStyle(true, source === "2024" ? 1 : 0, source);
   const { bg: scBg,  color: scColor  } = pillStyle(true, source === "2024" ? 1 : 0, source);
   const coaPill = { label: source === "2024" ? "GOP SWEPT 2024 · DEM 4→3" : "ALL 3 DEM SEATS ON BALLOT", bg: coaBg, color: coaColor };
@@ -225,23 +220,76 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
   const coaNote = source === "2024"
     ? "Republicans won all 3 open seats (Murry, Zachary, Freeman), reducing Democrats from 4 to 3 seats."
     : "All 3 remaining Democratic seats — Arrowood, Collins, and Hampson — are contested in November 2026.";
-  const scNote     = source === "2024"
+  const scNote = source === "2024"
     ? "Republicans hold a 5–2 supermajority on the NC Supreme Court."
     : "Justice Anita Earls (D) is the only Supreme Court seat on the 2026 ballot.";
 
-  function CompositionBar({ demPct, repPct, demCount, repCount }: { demPct: number; repPct: number; demCount: number; repCount: number }) {
+  const CIRCLE = 22;
+  const GAP    = 3;
+  const STEP   = CIRCLE + GAP;
+
+  type CircleDatum = { label: string; isTight: boolean; demSide: boolean; href: string };
+
+  function raceToCircle(race: RaceSummary, label: string, href: string): CircleDatum {
+    const leader = race.candidates[0];
+    const isTight = race.margin === null || race.margin <= COMPETITIVE_THRESHOLD;
+    const demSide = leader?.party === "DEM" || (race.precincts.reporting === 0 && leader?.party !== "REP");
+    return { label, isTight, demSide, href };
+  }
+
+  const scCircles  = source !== "2024" ? scRaces.map((r) => raceToCircle(r, "SC", "#judicial-battleground"))  : [];
+  const coaCircles = source !== "2024"
+    ? coaRaces.map((r) => {
+        const m = r.cnm.match(/SEAT\s+0*(\d+)/i);
+        return raceToCircle(r, m ? m[1] : "?", "#judicial-battleground");
+      })
+    : [];
+
+  function BarWithCircles({ demPct, repPct, demCount, repCount, circles }: {
+    demPct: number; repPct: number; demCount: number; repCount: number; circles: CircleDatum[];
+  }) {
+    const demCircles = circles.filter((c) => c.demSide);
+    const repCircles = circles.filter((c) => !c.demSide);
+
+    const circleStyle = (c: CircleDatum, side: "dem" | "rep", i: number) => {
+      const bg    = c.isTight ? "#fef9c3" : side === "dem" ? "#dcfce7" : "#fef9c3";
+      const border = c.isTight ? "#a16207" : side === "dem" ? "#15803d" : "#a16207";
+      const color  = c.isTight ? "#854d0e" : side === "dem" ? "#15803d" : "#854d0e";
+      const left   = side === "dem"
+        ? `calc(${demPct}% - ${(i + 1) * STEP}px)`
+        : `calc(${demPct}% + ${GAP + i * STEP}px)`;
+      return { bg, border, color, left };
+    };
+
     return (
-      <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${demPct}%`, background: C.primaryMid }} />
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${repPct}%`, background: C.secondary }} />
-        {/* 50% majority line */}
-        <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.6)", transform: "translateX(-50%)", zIndex: 10 }} />
-        <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
-          DEM {demCount}
+      <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${demPct}%`, background: C.primaryMid }} />
+          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${repPct}%`, background: C.secondary }} />
+          <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.6)", transform: "translateX(-50%)", zIndex: 10 }} />
+          <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+            DEM {demCount}
+          </div>
+          <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+            REP {repCount}
+          </div>
         </div>
-        <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#fff", zIndex: 2, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
-          REP {repCount}
-        </div>
+        {demCircles.map((c, i) => {
+          const s = circleStyle(c, "dem", i);
+          return (
+            <a key={c.label} href={c.href} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+              {c.label}
+            </a>
+          );
+        })}
+        {repCircles.map((c, i) => {
+          const s = circleStyle(c, "rep", i);
+          return (
+            <a key={c.label} href={c.href} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+              {c.label}
+            </a>
+          );
+        })}
       </div>
     );
   }
@@ -252,12 +300,11 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>Supreme Court</span>
-          <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
           <span style={{ fontSize: 11, fontWeight: 700, background: scPill.bg, color: scPill.color, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
             {scPill.label}
           </span>
         </div>
-        <CompositionBar demPct={scDemPct} repPct={scRepPct} demCount={sc.current.dem} repCount={sc.current.rep} />
+        <BarWithCircles demPct={scDemPct} repPct={scRepPct} demCount={sc.current.dem} repCount={sc.current.rep} circles={scCircles} />
         <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{scNote}</div>
       </div>
 
@@ -265,12 +312,11 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>Court of Appeals</span>
-          <a href="#judicial-battleground" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
           <span style={{ fontSize: 11, fontWeight: 700, background: coaPill.bg, color: coaPill.color, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
             {coaPill.label}
           </span>
         </div>
-        <CompositionBar demPct={coaDemPct} repPct={coaRepPct} demCount={coa.current.dem} repCount={coa.current.rep} />
+        <BarWithCircles demPct={coaDemPct} repPct={coaRepPct} demCount={coa.current.dem} repCount={coa.current.rep} circles={coaCircles} />
         <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{coaNote}</div>
       </div>
     </div>
@@ -398,7 +444,6 @@ function SupermajorityHero({
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontWeight: 700, fontSize: BTN.labelSize, color: C.primary }}>{label}</span>
-            <a href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", width: BTN.circleSize, height: BTN.circleSize, borderRadius: "50%", background: `${C.primary}0f`, border: `1px solid ${C.primary}25`, fontSize: BTN.arrowSize, color: C.secondary, fontWeight: 800, flexShrink: 0, transition: "background 0.15s" }}>↓</a>
             <span style={{ fontSize: 11, fontWeight: 700, background: outcomeBg, color: outcomeColor, borderRadius: 4, padding: "4px 10px", letterSpacing: "0.04em" }}>
               {outcomeLabel}
             </span>
@@ -406,37 +451,105 @@ function SupermajorityHero({
         </div>
 
         {/* Bar */}
-        <div style={{ position: "relative" }}>
-          <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
-            {/* DEM from left */}
-            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${stats.demPct}%`, background: C.primaryMid }} />
-            {/* Gap overlay only when result is confirmed (2024, or 2026 ≥90%) */}
-            {!repHasSuper && gapWidth > 0 && (source === "2024" || avgPct >= 0.9) && (
-              <div style={{ position: "absolute", left: `${gapLeft}%`, top: 0, bottom: 0, width: `${gapWidth}%`, background: "#16a34a", opacity: 0.85 }} />
-            )}
-            {/* REP from right */}
-            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${stats.repPct}%`, background: C.secondary }} />
-            {/* Supermajority threshold marker — white in 2026 preview, colored once confirmed */}
-            <div style={{
-              position: "absolute",
-              left: `${stats.superPct}%`,
-              top: 0, bottom: 0,
-              width: 3,
-              background: (source !== "2024" && avgPct < 0.9) ? "rgba(255,255,255,0.75)" : outcomeColor,
-              transform: "translateX(-50%)",
-              zIndex: 10,
-              boxShadow: (source !== "2024" && avgPct < 0.9) ? "none" : `0 0 6px ${outcomeColor}80`,
-            }} />
-            {/* DEM count inside bar */}
-            <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
-              DEM {stats.dem}
+        {(() => {
+          // Featured-candidate circles — house only, 2026 modes only
+          const CIRCLE = 22;
+          const GAP = 3;
+          const STEP = CIRCLE + GAP;
+
+          const GROUP_GAP = 0;
+
+          const featuredSeats = source !== "2024"
+            ? seats.filter((s) => s.hasFeaturedCandidate && isBattlegroundSeat(s))
+            : [];
+
+          const isTightSeat = (s: SeatVisual) =>
+            s.margin === null || s.margin <= COMPETITIVE_THRESHOLD;
+
+          // DEM side = DEM leading, or zero-vote DEM incumbent — split by tight/leading
+          const demSideAll = featuredSeats.filter((s) =>
+            s.pctReporting > 0 ? s.leaderParty === "DEM" : s.incumbentParty === "DEM"
+          );
+          const demTight   = demSideAll.filter(isTightSeat);
+          const demLeading = demSideAll.filter((s) => !isTightSeat(s));
+
+          // REP side = REP leading or unknown — split by tight/leading
+          const repSideAll = featuredSeats.filter((s) =>
+            s.pctReporting > 0 ? s.leaderParty !== "DEM" : s.incumbentParty !== "DEM"
+          );
+          const repTight   = repSideAll.filter(isTightSeat);
+          const repLeading = repSideAll.filter((s) => !isTightSeat(s));
+
+          // Offset calculator: tight group starts at line, leading group after a gap
+          const demOffset = (group: "tight" | "leading", i: number) =>
+            group === "tight"
+              ? (i + 1) * STEP
+              : demTight.length * STEP + GROUP_GAP + (i + 1) * STEP;
+
+          const repOffset = (group: "tight" | "leading", i: number) =>
+            group === "tight"
+              ? GAP + i * STEP
+              : GAP + repTight.length * STEP + GROUP_GAP + i * STEP;
+
+          return (
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "relative", height: 30, borderRadius: 12, overflow: "hidden", background: C.surfaceHigh }}>
+                {/* DEM from left */}
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${stats.demPct}%`, background: C.primaryMid }} />
+                {/* Gap overlay only when result is confirmed (2024, or 2026 ≥90%) */}
+                {!repHasSuper && gapWidth > 0 && (source === "2024" || avgPct >= 0.9) && (
+                  <div style={{ position: "absolute", left: `${gapLeft}%`, top: 0, bottom: 0, width: `${gapWidth}%`, background: "#16a34a", opacity: 0.85 }} />
+                )}
+                {/* REP from right */}
+                <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${stats.repPct}%`, background: C.secondary }} />
+                {/* Supermajority threshold marker */}
+                <div style={{
+                  position: "absolute",
+                  left: `${stats.superPct}%`,
+                  top: 0, bottom: 0,
+                  width: 3,
+                  background: (source !== "2024" && avgPct < 0.9) ? "rgba(255,255,255,0.75)" : outcomeColor,
+                  transform: "translateX(-50%)",
+                  zIndex: 10,
+                  boxShadow: (source !== "2024" && avgPct < 0.9) ? "none" : `0 0 6px ${outcomeColor}80`,
+                }} />
+                {/* DEM count inside bar */}
+                <div style={{ position: "absolute", left: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+                  DEM {stats.dem}
+                </div>
+                {/* REP count inside bar */}
+                <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
+                  REP {stats.rep}
+                </div>
+              </div>
+
+              {/* Featured candidate circles — DEM tight (closest to line) */}
+              {demTight.map((seat: SeatVisual, i: number) => (
+                <a key={seat.gid} href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                  {extractDistrictNumber(seat.districtLabel)}
+                </a>
+              ))}
+              {/* Featured candidate circles — DEM leading (further left) */}
+              {demLeading.map((seat: SeatVisual, i: number) => (
+                <a key={seat.gid} href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#dcfce7", border: "2px solid #15803d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#15803d", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                  {extractDistrictNumber(seat.districtLabel)}
+                </a>
+              ))}
+              {/* Featured candidate circles — REP tight (closest to line) */}
+              {repTight.map((seat: SeatVisual, i: number) => (
+                <a key={seat.gid} href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                  {extractDistrictNumber(seat.districtLabel)}
+                </a>
+              ))}
+              {/* Featured candidate circles — REP leading (further right) */}
+              {repLeading.map((seat: SeatVisual, i: number) => (
+                <a key={seat.gid} href={`#${chamberKey}-battleground`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fff", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                  {extractDistrictNumber(seat.districtLabel)}
+                </a>
+              ))}
             </div>
-            {/* REP count inside bar */}
-            <div style={{ position: "absolute", right: 10, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 11, fontWeight: 800, color: "#ffffff", letterSpacing: "0.03em", zIndex: 11, textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}>
-              REP {stats.rep}
-            </div>
-          </div>
-        </div>
+          );
+        })()}
         {barNote && <div style={{ fontSize: 10, color: C.outline, lineHeight: 1.4 }}>{barNote}</div>}
       </div>
     );
