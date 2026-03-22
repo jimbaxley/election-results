@@ -139,9 +139,8 @@ function toSeatVisual(
     hasFeaturedCandidate: race.candidates.some((c) => isFeaturedCandidate(formatName(c.name))),
     allCandidates: [...race.candidates]
       .sort((a, b) => {
-        const aFeatured = isFeaturedCandidate(formatName(a.name)) ? 0 : 1;
-        const bFeatured = isFeaturedCandidate(formatName(b.name)) ? 0 : 1;
-        return aFeatured - bFeatured;
+        const partyOrder = (p: string) => p === "DEM" ? 0 : p === "REP" ? 1 : 2;
+        return partyOrder(a.party) - partyOrder(b.party);
       })
       .map((c) => ({ name: c.name, party: c.party, pct: c.pct * 100 })),
   };

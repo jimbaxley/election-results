@@ -101,7 +101,12 @@ function toSeatVisual(race: RaceSummary, priorSeats: Record<string, PriorSeat>):
     priorMargin:     prior?.margin        ?? null,
     priorTotalVotes: prior?.totalVotes    ?? null,
     seatStatus,
-    allCandidates: race.candidates.map((c) => ({ name: c.name, party: c.party, pct: c.pct * 100 })),
+    allCandidates: [...race.candidates]
+      .sort((a, b) => {
+        const partyOrder = (p: string) => p === "DEM" ? 0 : p === "REP" ? 1 : 2;
+        return partyOrder(a.party) - partyOrder(b.party);
+      })
+      .map((c) => ({ name: c.name, party: c.party, pct: c.pct * 100 })),
   };
 }
 
