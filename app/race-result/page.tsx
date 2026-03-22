@@ -380,7 +380,7 @@ function RaceResultPageContent() {
   ];
 
   return (
-    <main style={{ background: "transparent", minHeight: "100vh", padding: 16 }}>
+    <main style={{ background: "transparent", minHeight: "100vh" }}>
       <style>{`
         .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
         .race-card:hover { box-shadow: 0 8px 24px rgba(4,37,103,0.13) !important; transform: translateY(-2px); }
