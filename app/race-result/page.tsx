@@ -317,10 +317,9 @@ function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
   );
 }
 
-// Parse "HD-24" → { ogl: "NCH", district: "24" }
-// Parse "SD-11" → { ogl: "NCS", district: "11" }
+// Parse "HD24" or "SD11" → { ogl: "NCH"/"NCS", district: "24"/"11" }
 function parseDistrictParam(param: string): { ogl: string; district: string } | null {
-  const match = param.trim().toUpperCase().match(/^(HD|SD)-?(\d+)$/);
+  const match = param.trim().toUpperCase().match(/^(HD|SD)(\d+)$/);
   if (!match) return null;
   return { ogl: match[1] === "HD" ? "NCH" : "NCS", district: String(Number(match[2])) };
 }
