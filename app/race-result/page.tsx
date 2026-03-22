@@ -317,23 +317,27 @@ function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
   );
 }
 
-function normalizeToken(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
+// Parse "HD-24" → { ogl: "NCH", district: "24" }
+// Parse "SD-11" → { ogl: "NCS", district: "11" }
+function parseDistrictParam(param: string): { ogl: string; district: string } | null {
+  const match = param.trim().toUpperCase().match(/^(HD|SD)-?(\d+)$/);
+  if (!match) return null;
+  return { ogl: match[1] === "HD" ? "NCH" : "NCS", district: String(Number(match[2])) };
 }
 
-function findRaceByLastName(races: RaceSummary[], lastName: string): RaceSummary | undefined {
-  const needle = normalizeToken(lastName);
-  return races.find((race) =>
-    race.candidates.some((c) => {
-      const tokens = c.name.toLowerCase().split(/\s+/).map(normalizeToken).filter(Boolean);
-      return (tokens.at(-1) ?? "") === needle;
-    }),
-  );
+function findRaceByDistrict(races: RaceSummary[], param: string): RaceSummary | undefined {
+  const parsed = parseDistrictParam(param);
+  if (!parsed) return undefined;
+  return races.find((race) => {
+    if (race.ogl !== parsed.ogl) return false;
+    const m = race.cnm.match(/DISTRICT\s+0*([0-9]+)/i);
+    return m ? String(Number(m[1])) === parsed.district : false;
+  });
 }
 
 function RaceResultPageContent() {
   const searchParams = useSearchParams();
-  const nameParam = searchParams.get("name");
+  const districtParam = searchParams.get("district");
 
   const [source, setSource] = useState<Source>("2024");
   const [races, setRaces] = useState<RaceSummary[]>([]);
@@ -367,7 +371,7 @@ function RaceResultPageContent() {
     return () => clearInterval(interval);
   }, [source]);
 
-  const race = nameParam ? findRaceByLastName(races, nameParam) : undefined;
+  const race = districtParam ? findRaceByDistrict(races, districtParam) : undefined;
   const seat = race ? toSeatVisual(race, priorSeats) : null;
 
   const tabs: { label: string; src: Source }[] = [
@@ -425,12 +429,12 @@ function RaceResultPageContent() {
         <RaceWidget seat={seat} source={source} />
       )}
 
-      {!loading && !error && !seat && nameParam && (
-        <p style={{ color: C.outline, fontSize: 14 }}>No race found for &ldquo;{nameParam}&rdquo;.</p>
+      {!loading && !error && !seat && districtParam && (
+        <p style={{ color: C.outline, fontSize: 14 }}>No race found for &ldquo;{districtParam}&rdquo;.</p>
       )}
 
-      {!loading && !error && !nameParam && (
-        <p style={{ color: C.outline, fontSize: 14 }}>Pass a candidate last name with ?name=lastname</p>
+      {!loading && !error && !districtParam && (
+        <p style={{ color: C.outline, fontSize: 14 }}>Pass a district with ?district=HD-24 or ?district=SD-11</p>
       )}
 
       {lastUpdated && (
