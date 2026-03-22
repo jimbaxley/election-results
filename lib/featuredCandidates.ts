@@ -15,6 +15,8 @@ export const FEATURED_LAST_NAMES: Set<string> = new Set([
   "hopkins",
   "gailliard",
   "grafstein",
+  "cohn",
+  "bradley",
 ]);
 
 function normalizeToken(value: string): string {
