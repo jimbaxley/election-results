@@ -66,8 +66,8 @@ function formatDistrictLabel(race: RaceSummary): string {
   const match = race.cnm.match(/DISTRICT\s+0*([0-9]+)/i);
   if (!match) return race.cnm.split(" - ")[0] ?? race.cnm;
   const num = match[1];
-  if (race.ogl === "NCS") return `NC Senate District ${num}`;
-  if (race.ogl === "NCH") return `NC House District ${num}`;
+  if (race.ogl === "NCS") return `SD-${num}`;
+  if (race.ogl === "NCH") return `HD-${num}`;
   return race.cnm;
 }
 
@@ -375,8 +375,8 @@ function RaceResultPageContent() {
   const seat = race ? toSeatVisual(race, priorSeats) : null;
 
   const tabs: { label: string; src: Source }[] = [
-    { label: "2024 Final", src: "2024" },
-    { label: "2026 Election Night", src: "2026-clean" },
+    { label: "2024", src: "2024" },
+    { label: "2026", src: "2026-clean" },
   ];
 
   return (
@@ -386,40 +386,46 @@ function RaceResultPageContent() {
         .race-card:hover { box-shadow: 0 8px 24px rgba(4,37,103,0.13) !important; transform: translateY(-2px); }
       `}</style>
 
-      {/* Toggle */}
-      <div
-        style={{
-          display: "inline-flex",
-          border: `1px solid ${C.outlineVariant}`,
-          borderRadius: 8,
-          overflow: "hidden",
-          marginBottom: 16,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        {tabs.map((tab) => {
-          const active = source === tab.src;
-          return (
-            <button
-              key={tab.src}
-              onClick={() => setSource(tab.src)}
-              style={{
-                padding: "6px 14px",
-                border: "none",
-                borderRight: tab.src === "2024" ? `1px solid ${C.outlineVariant}` : "none",
-                background: active ? C.primary : C.surface,
-                color: active ? "#fff" : C.outline,
-                cursor: "pointer",
-                fontWeight: active ? 700 : 500,
-                fontSize: 12,
-                letterSpacing: "0.02em",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Toggle + timestamp row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            border: `1px solid ${C.outlineVariant}`,
+            borderRadius: 8,
+            overflow: "hidden",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          {tabs.map((tab) => {
+            const active = source === tab.src;
+            return (
+              <button
+                key={tab.src}
+                onClick={() => setSource(tab.src)}
+                style={{
+                  padding: "6px 14px",
+                  border: "none",
+                  borderRight: tab.src === "2024" ? `1px solid ${C.outlineVariant}` : "none",
+                  background: active ? C.primary : C.surface,
+                  color: active ? "#fff" : C.outline,
+                  cursor: "pointer",
+                  fontWeight: active ? 700 : 500,
+                  fontSize: 12,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        {lastUpdated && (
+          <span style={{ fontSize: 10, color: C.outline }}>
+            {source === "2024" ? "2024 Final Results" : `Updated ${new Date(lastUpdated).toLocaleTimeString()}`}
+          </span>
+        )}
       </div>
 
       {loading && <p style={{ color: C.outline, fontSize: 14 }}>Loading…</p>}
@@ -437,11 +443,7 @@ function RaceResultPageContent() {
         <p style={{ color: C.outline, fontSize: 14 }}>Pass a district with ?district=HD-24 or ?district=SD-11</p>
       )}
 
-      {lastUpdated && (
-        <div style={{ marginTop: 12, fontSize: 10, color: C.outline }}>
-          {source === "2024" ? "2024 Final Results" : `Updated ${new Date(lastUpdated).toLocaleTimeString()}`}
-        </div>
-      )}
+
     </main>
   );
 }
