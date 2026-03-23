@@ -237,7 +237,7 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
     return { label, isTight, demSide, href };
   }
 
-  const scCircles  = source !== "2024" ? scRaces.map((r) => raceToCircle(r, "SC", "#judicial-battleground"))  : [];
+  const scCircles  = source !== "2024" ? scRaces.map((r) => raceToCircle(r, "AE", "#judicial-battleground"))  : [];
   const coaCircles = source !== "2024"
     ? coaRaces.map((r) => {
         const m = r.cnm.match(/SEAT\s+0*(\d+)/i);
@@ -588,7 +588,7 @@ function SupermajorityHero({
 
   const TABS: { value: Source; label: string }[] = [
     { value: "2026-clean", label: "Election Night" },
-    { value: "2026",       label: "Preview"        },
+    { value: "2026",       label: "2026 Preview"        },
     { value: "2024",       label: "2024 Results"   },
   ];
 

@@ -1,24 +1,28 @@
 /**
  * Candidates endorsed / supported by Team Up NC.
- * Add last names (lowercase) to mark them with the donkey logo on race cards.
- * If two candidates in the same chamber share a last name, use a fuller match
- * by adding their full formatted name instead (e.g. "beth gardner helfrich").
+ * - lastName: used to match the donkey logo on race cards (case-insensitive).
+ *   Use full formatted name for disambiguation (e.g. "safiyah jackson").
+ * - gid: NCSBE race GID — add once confirmed from the live feed or staging file.
+ *   Used by scripts/check-feed.ts to verify candidate names against the official CSV.
  */
-export const FEATURED_LAST_NAMES: Set<string> = new Set([
-  // Add last names here, lowercase:
-  "mcrae",
-  "everitt",
-  "pittman",
-  "decker",
-  "wilkins",
-  "sidman",
-  "hopkins",
-  "gailliard",
-  "grafstein",
-  "cohn",
-  "bradley",
-  "safiyah jackson"
-]);
+export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
+  { lastName: "mcrae",          gid: "1212" },
+  { lastName: "everitt",        gid: "1320" },
+  { lastName: "pittman",        gid: "1204" },
+  { lastName: "decker",         gid: "1217" },
+  { lastName: "wilkins",        gid: "1205" },
+  { lastName: "sidman",         gid: "1285" },
+  { lastName: "hopkins",        gid: "1215" },
+  { lastName: "gailliard",      gid: "1313" },
+  { lastName: "grafstein",      gid: "1315" },
+  { lastName: "cohn" },
+  { lastName: "bradley",        gid: "1344" },
+  { lastName: "safiyah jackson" },
+];
+
+export const FEATURED_LAST_NAMES: Set<string> = new Set(
+  FEATURED_CANDIDATES.map((c) => c.lastName),
+);
 
 function normalizeToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, "");
