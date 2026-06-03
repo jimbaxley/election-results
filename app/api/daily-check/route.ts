@@ -40,8 +40,13 @@ export async function GET(): Promise<Response> {
 
   const payload = {
     allClear:    data.allClear,
+    candidateDataCurrent: data.candidateDataCurrent,
     feedLive:    data.feedLive,
-    status:      data.allClear ? "ALL_CLEAR" : "NOT_READY",
+    status:      data.allClear
+      ? "ALL_CLEAR"
+      : data.candidateDataCurrent
+      ? "CANDIDATE_DATA_CURRENT_FEED_PENDING"
+      : "NOT_READY",
     issueCount:  issues.length,
     issues,
     summary:     data.allClear

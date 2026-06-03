@@ -2,29 +2,18 @@ import fs from "fs";
 import path from "path";
 import { parseRawFeed, summarizeRaces } from "../../../lib/parseResults";
 import { FEATURED_CANDIDATES } from "../../../lib/featuredCandidates";
+import {
+  GENERAL_ELECTION_DATE,
+  buildCandidateContestLookup,
+  normalizeContestName,
+  parseCandidateCSV,
+} from "../../../lib/candidateCsv";
 
 export const revalidate = 0;
 
 const FEED_URL = "https://er.ncsbe.gov/enr/20261103/data/results_0.txt";
 const CSV_URL =
   "https://s3.amazonaws.com/dl.ncsbe.gov/Elections/2026/Candidate%20Filing/Candidate_Listing_2026.csv";
-
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  const headers = [...lines[0].matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-  return lines.slice(1).map((line) => {
-    const vals = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
-  });
-}
-
-function normContest(s: string): string {
-  return s
-    .replace(/\s*\(VOTE FOR \d+\)/i, "")
-    .replace(/DISTRICT\s+0*(\d+)/gi, "DISTRICT $1")
-    .trim()
-    .toUpperCase();
-}
 
 export type CandidateCheck = {
   name: string;
@@ -45,6 +34,8 @@ export type FeedStatusResponse = {
   feedLive: boolean;
   feedHttpStatus: string;
   csvError: string;
+  candidateDataCurrent: boolean;
+  csvElectionDate: string;
   races: RaceCheck[];
   allClear: boolean;
   checkedAt: string;
@@ -68,7 +59,7 @@ export async function GET(): Promise<Response> {
   try {
     const res = await fetch(CSV_URL, { cache: "no-store" });
     if (res.ok) {
-      csvRows = parseCSV(await res.text());
+      csvRows = parseCandidateCSV(await res.text());
     } else {
       csvError = `HTTP ${res.status}`;
     }
@@ -76,17 +67,8 @@ export async function GET(): Promise<Response> {
     csvError = "Network error";
   }
 
-  // Build CSV lookup: normContest → party → [names]
-  const csvByContest: Record<string, Record<string, string[]>> = {};
-  for (const row of csvRows) {
-    const key = normContest(row.contest_name);
-    if (!csvByContest[key]) csvByContest[key] = {};
-    const party = row.party_candidate;
-    if (!csvByContest[key][party]) csvByContest[key][party] = [];
-    if (!csvByContest[key][party].includes(row.name_on_ballot)) {
-      csvByContest[key][party].push(row.name_on_ballot);
-    }
-  }
+  // Build CSV lookup from general-election rows only: contest -> party -> names.
+  const csvByContest = buildCandidateContestLookup(csvRows);
 
   // ── 3. Load staging file ──────────────────────────────────────────────────
   const stagingPath = path.join(process.cwd(), "tests", "staging_2026_clean.json");
@@ -102,7 +84,7 @@ export async function GET(): Promise<Response> {
     const race = raceByGid[gid];
     if (!race) continue;
 
-    const key = normContest(race.cnm);
+    const key = normalizeContestName(race.cnm);
     const csvContest = csvByContest[key];
 
     const candidates: CandidateCheck[] = race.candidates.map((c) => {
@@ -128,7 +110,7 @@ export async function GET(): Promise<Response> {
   // ── 5. Check judicial races ───────────────────────────────────────────────
   const judicialRaces = stagingRaces.filter((r) => r.ogl === "JUD");
   for (const race of judicialRaces) {
-    const key = normContest(race.cnm);
+    const key = normalizeContestName(race.cnm);
     const csvContest = csvByContest[key];
 
     const candidates: CandidateCheck[] = race.candidates.map((c) => {
@@ -151,12 +133,15 @@ export async function GET(): Promise<Response> {
     });
   }
 
-  const allClear = !csvError && feedLive && races.every((r) => r.primaryResolved);
+  const candidateDataCurrent = !csvError && races.every((r) => r.primaryResolved);
+  const allClear = candidateDataCurrent && feedLive;
 
   return Response.json({
     feedLive,
     feedHttpStatus,
     csvError,
+    candidateDataCurrent,
+    csvElectionDate: GENERAL_ELECTION_DATE,
     races,
     allClear,
     checkedAt: new Date().toISOString(),

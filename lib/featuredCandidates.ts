@@ -7,7 +7,7 @@
  */
 export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
   { lastName: "mcrae",          gid: "1212" },
-  { lastName: "everitt",        gid: "1320" },
+  { lastName: "fatmi",          gid: "1320" },
   { lastName: "pittman",        gid: "1204" },
   { lastName: "decker",         gid: "1217" },
   { lastName: "wilkins",        gid: "1205" },

@@ -10,33 +10,19 @@ import fs from "fs";
 import path from "path";
 import { parseRawFeed, summarizeRaces } from "../lib/parseResults";
 import { FEATURED_CANDIDATES } from "../lib/featuredCandidates";
-import { COA_CONFIG, SC_CONFIG } from "../lib/config";
+import {
+  GENERAL_ELECTION_DATE,
+  CandidateContestLookup,
+  buildCandidateContestLookup,
+  isGeneralElectionRow,
+  normalizeContestName,
+  parseCandidateCSV,
+} from "../lib/candidateCsv";
 
 const CSV_URL =
   "https://s3.amazonaws.com/dl.ncsbe.gov/Elections/2026/Candidate%20Filing/Candidate_Listing_2026.csv";
 const LOCAL_CSV = path.join(process.cwd(), "tests", "Candidate_Listing_2026.csv");
 const STAGING_FILE = path.join(process.cwd(), "tests", "staging_2026_clean.json");
-
-// ── CSV parser ────────────────────────────────────────────────────────────────
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  const headers = [...lines[0].matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-  return lines.slice(1).map((line) => {
-    const vals = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
-  });
-}
-
-// Normalize a contest name for comparison:
-// - strip "(VOTE FOR X)" suffix
-// - strip leading zeros from district numbers (DISTRICT 018 → DISTRICT 18)
-function normContest(s: string): string {
-  return s
-    .replace(/\s*\(VOTE FOR \d+\)/i, "")
-    .replace(/DISTRICT\s+0*(\d+)/gi, "DISTRICT $1")
-    .trim()
-    .toUpperCase();
-}
 
 async function main() {
   // ── Fetch or load CSV ───────────────────────────────────────────────────────
@@ -58,18 +44,14 @@ async function main() {
     console.log(`\nFetch failed (${err}), using local file.`);
   }
 
-  const rows = parseCSV(csvText);
-  console.log(`CSV rows: ${rows.length}  source: ${csvSource}  (${new Date().toLocaleTimeString()})\n`);
+  const rows = parseCandidateCSV(csvText);
+  const generalRows = rows.filter(isGeneralElectionRow);
+  console.log(
+    `CSV rows: ${rows.length}  general ${GENERAL_ELECTION_DATE}: ${generalRows.length}  source: ${csvSource}  (${new Date().toLocaleTimeString()})\n`,
+  );
 
-  // ── Build CSV lookup: normContest → { party → Set<name_on_ballot> } ─────────
-  const csvByContest: Record<string, Record<string, Set<string>>> = {};
-  for (const row of rows) {
-    const key = normContest(row.contest_name);
-    if (!csvByContest[key]) csvByContest[key] = {};
-    const party = row.party_candidate;
-    if (!csvByContest[key][party]) csvByContest[key][party] = new Set();
-    csvByContest[key][party].add(row.name_on_ballot);
-  }
+  // ── Build CSV lookup: normalized contest -> { party -> Set<name_on_ballot> }
+  const csvByContest = toSetLookup(buildCandidateContestLookup(rows));
 
   // ── Load staging file ───────────────────────────────────────────────────────
   const stagingRecords = parseRawFeed(fs.readFileSync(STAGING_FILE, "utf-8"));
@@ -97,7 +79,7 @@ async function main() {
       continue;
     }
 
-    const key = normContest(race.cnm);
+    const key = normalizeContestName(race.cnm);
     const csvContest = csvByContest[key];
     console.log(`${race.cnm} (GID ${gid})`);
 
@@ -122,7 +104,7 @@ async function main() {
   const coaRaces = stagingRaces.filter((r) => r.ogl === "JUD" && r.cnm.includes("COURT OF APPEALS"));
 
   if (scRace) {
-    const key = normContest(scRace.cnm);
+    const key = normalizeContestName(scRace.cnm);
     const csvContest = csvByContest[key] ?? findJudicialContest(csvByContest, "SUPREME COURT");
     console.log(`${scRace.cnm} (GID ${scRace.gid})`);
     if (!csvContest) {
@@ -135,7 +117,7 @@ async function main() {
   }
 
   for (const coaRace of coaRaces) {
-    const key = normContest(coaRace.cnm);
+    const key = normalizeContestName(coaRace.cnm);
     const csvContest = csvByContest[key] ?? findJudicialContest(csvByContest, key);
     console.log(`${coaRace.cnm} (GID ${coaRace.gid})`);
     if (!csvContest) {
@@ -185,11 +167,24 @@ async function main() {
 }
 
 function findJudicialContest(
-  csvByContest: Record<string, Record<string, Set<string>>>,
+  csvByContest: CandidateContestLookup<Set<string>>,
   keyword: string,
 ): Record<string, Set<string>> | null {
   const key = Object.keys(csvByContest).find((k) => k.includes(keyword.toUpperCase()));
   return key ? csvByContest[key] : null;
+}
+
+function toSetLookup(
+  lookup: CandidateContestLookup<string[]>,
+): CandidateContestLookup<Set<string>> {
+  return Object.fromEntries(
+    Object.entries(lookup).map(([contest, parties]) => [
+      contest,
+      Object.fromEntries(
+        Object.entries(parties).map(([party, names]) => [party, new Set(names)]),
+      ),
+    ]),
+  );
 }
 
 main().catch((err) => {

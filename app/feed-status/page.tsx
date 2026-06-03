@@ -91,6 +91,13 @@ export default function FeedStatusPage() {
 
   const legislative = data?.races.filter((r) => r.section === "legislative") ?? [];
   const judicial    = data?.races.filter((r) => r.section === "judicial")    ?? [];
+  const statusText = !data
+    ? ""
+    : data.allClear
+    ? "All clear - feed live and candidate data current"
+    : data.candidateDataCurrent
+    ? "Candidate data current - feed not yet live"
+    : "Candidate data needs review - see items below";
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", padding: "32px 24px", fontFamily: "inherit" }}>
@@ -140,9 +147,7 @@ export default function FeedStatusPage() {
             }}>
               <StatusDot ok={data.allClear} />
               <span style={{ fontWeight: 800, fontSize: 15, color: data.allClear ? C.green : C.primary }}>
-                {data.allClear
-                  ? "All clear — feed live and all primaries resolved"
-                  : "Not ready — see items below"}
+                {statusText}
               </span>
             </div>
 
@@ -166,6 +171,7 @@ export default function FeedStatusPage() {
             <div style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 20, overflow: "hidden" }}>
               <div style={{ background: C.surfaceLow, padding: "10px 16px", fontWeight: 700, fontSize: 13, color: C.outline, letterSpacing: "0.05em" }}>
                 FEATURED LEGISLATIVE RACES
+                <span style={{ fontWeight: 400, marginLeft: 8 }}>CSV date: {data.csvElectionDate}</span>
                 {data.csvError && <span style={{ color: C.red, fontWeight: 400, marginLeft: 8 }}>CSV error: {data.csvError}</span>}
               </div>
               {legislative.map((r) => <RaceRow key={r.gid} race={r} />)}
