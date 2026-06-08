@@ -3,10 +3,8 @@
  * - lastName: used to match the donkey logo on race cards (case-insensitive).
  *   Use full formatted name for disambiguation (e.g. "safiyah jackson").
  * - gid: NCSBE race GID — add once confirmed from the live feed or staging file.
- *   Used by scripts/check-feed.ts to verify candidate names against the official CSV.
  */
 export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
-  { lastName: "mcrae",          gid: "1212" },
   { lastName: "fatmi",          gid: "1320" },
   { lastName: "pittman",        gid: "1204" },
   { lastName: "decker",         gid: "1217" },
@@ -18,6 +16,29 @@ export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
   { lastName: "cohn" },
   { lastName: "bradley",        gid: "1344" },
   { lastName: "safiyah jackson" },
+];
+
+export type MonitoredRace = {
+  gid: string;
+  replacementParty?: string;
+  withdrawnName?: string;
+  replacementLabel?: string;
+};
+
+/**
+ * Races checked against the official candidate CSV.
+ * Use replacementParty/withdrawnName when we want to keep monitoring a race
+ * after a supported candidate withdraws and before the replacement is known.
+ */
+export const MONITORED_RACES: MonitoredRace[] = [
+  {
+    gid: "1212",
+    replacementParty: "DEM",
+    withdrawnName: "Curtis McRae",
+    replacementLabel: "HD 32 Democratic nominee",
+  },
+  ...FEATURED_CANDIDATES.filter((c): c is { lastName: string; gid: string } => Boolean(c.gid))
+    .map((c) => ({ gid: c.gid })),
 ];
 
 export const FEATURED_LAST_NAMES: Set<string> = new Set(
@@ -32,8 +53,26 @@ function normalizeToken(value: string): string {
  * Returns true if the candidate's formatted name matches a featured entry.
  * Checks full name first (for disambiguation), then last name only.
  */
-export function isFeaturedCandidate(formattedName: string): boolean {
+export function isFeaturedCandidate(
+  formattedName: string,
+  context?: { gid?: string; party?: string },
+): boolean {
   const normalizedFull = normalizeToken(formattedName);
+
+  if (context?.gid && context.party) {
+    const monitoredReplacement = MONITORED_RACES.find(
+      (race) => race.gid === context.gid && race.replacementParty === context.party,
+    );
+    const isWithdrawnCandidate = monitoredReplacement?.withdrawnName
+      ? normalizedFull.startsWith(normalizeToken(monitoredReplacement.withdrawnName))
+      : false;
+    if (
+      monitoredReplacement &&
+      !isWithdrawnCandidate
+    ) {
+      return true;
+    }
+  }
 
   for (const featured of FEATURED_LAST_NAMES) {
     if (normalizedFull === normalizeToken(featured)) return true;

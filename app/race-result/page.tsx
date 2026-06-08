@@ -253,7 +253,7 @@ function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
                   overflow: "hidden",
                 }}
               >
-                {isFeaturedCandidate(formatName(cand.name))
+                {isFeaturedCandidate(formatName(cand.name), { gid: seat.gid, party: cand.party })
                   ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : cand.party || "?"}
               </div>

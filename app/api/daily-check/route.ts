@@ -30,6 +30,8 @@ export async function GET(): Promise<Response> {
       if (c.status === "primary_unresolved") {
         const others = c.csvNames.filter((n) => n !== c.name).join(", ");
         issues.push(`${label} (${c.party}): primary unresolved — also filed: ${others}`);
+      } else if (c.status === "withdrawn_pending") {
+        issues.push(`${label} (${c.party}): withdrawn candidate "${c.name}" still in CSV; waiting for replacement`);
       } else if (c.status === "name_mismatch") {
         issues.push(`${label} (${c.party}): "${c.name}" not in CSV — CSV has: ${c.csvNames.join(", ")}`);
       } else if (c.status === "missing") {

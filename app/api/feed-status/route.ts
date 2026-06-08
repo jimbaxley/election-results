@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { parseRawFeed, summarizeRaces } from "../../../lib/parseResults";
-import { FEATURED_CANDIDATES } from "../../../lib/featuredCandidates";
+import { MONITORED_RACES, type MonitoredRace } from "../../../lib/featuredCandidates";
 import {
   GENERAL_ELECTION_DATE,
   buildCandidateContestLookup,
@@ -18,7 +18,7 @@ const CSV_URL =
 export type CandidateCheck = {
   name: string;
   party: string;
-  status: "match" | "primary_unresolved" | "name_mismatch" | "missing";
+  status: "match" | "csv_replacement" | "withdrawn_pending" | "primary_unresolved" | "name_mismatch" | "missing";
   csvNames: string[];
 };
 
@@ -79,30 +79,21 @@ export async function GET(): Promise<Response> {
   // ── 4. Check featured legislative races ──────────────────────────────────
   const races: RaceCheck[] = [];
 
-  for (const fc of FEATURED_CANDIDATES.filter((c) => c.gid)) {
-    const gid = fc.gid!;
+  for (const monitored of MONITORED_RACES) {
+    const gid = monitored.gid;
     const race = raceByGid[gid];
     if (!race) continue;
 
     const key = normalizeContestName(race.cnm);
     const csvContest = csvByContest[key];
 
-    const candidates: CandidateCheck[] = race.candidates.map((c) => {
-      const partyNames = csvContest?.[c.party] ?? [];
-      const exactMatch = partyNames.includes(c.name);
-      let status: CandidateCheck["status"];
-      if (!csvContest || partyNames.length === 0) status = "missing";
-      else if (exactMatch && partyNames.length === 1) status = "match";
-      else if (exactMatch && partyNames.length > 1) status = "primary_unresolved";
-      else status = "name_mismatch";
-      return { name: c.name, party: c.party, status, csvNames: partyNames };
-    });
+    const candidates = buildCandidateChecks(race.candidates, csvContest, monitored);
 
     races.push({
       gid,
       cnm: race.cnm,
       section: "legislative",
-      primaryResolved: candidates.every((c) => c.status === "match"),
+      primaryResolved: candidates.every(isResolvedCandidate),
       candidates,
     });
   }
@@ -128,7 +119,7 @@ export async function GET(): Promise<Response> {
       gid: race.gid,
       cnm: race.cnm,
       section: "judicial",
-      primaryResolved: candidates.every((c) => c.status === "match"),
+      primaryResolved: candidates.every(isResolvedCandidate),
       candidates,
     });
   }
@@ -146,4 +137,65 @@ export async function GET(): Promise<Response> {
     allClear,
     checkedAt: new Date().toISOString(),
   } satisfies FeedStatusResponse);
+}
+
+function buildCandidateChecks(
+  candidates: { name: string; party: string }[],
+  csvContest: Record<string, string[]> | undefined,
+  monitored: MonitoredRace,
+): CandidateCheck[] {
+  const checks = candidates
+    .filter((c) => c.party !== monitored.replacementParty)
+    .map((c) => checkCandidate(c.name, c.party, csvContest));
+
+  if (monitored.replacementParty) {
+    checks.unshift(checkReplacementCandidate(monitored, csvContest));
+  }
+
+  return checks;
+}
+
+function checkCandidate(
+  name: string,
+  party: string,
+  csvContest: Record<string, string[]> | undefined,
+): CandidateCheck {
+  const csvNames = csvContest?.[party] ?? [];
+  const exactMatch = csvNames.includes(name);
+  let status: CandidateCheck["status"];
+
+  if (!csvContest || csvNames.length === 0) status = "missing";
+  else if (exactMatch && csvNames.length === 1) status = "match";
+  else if (exactMatch && csvNames.length > 1) status = "primary_unresolved";
+  else status = "name_mismatch";
+
+  return { name, party, status, csvNames };
+}
+
+function checkReplacementCandidate(
+  monitored: MonitoredRace,
+  csvContest: Record<string, string[]> | undefined,
+): CandidateCheck {
+  const party = monitored.replacementParty!;
+  const csvNames = csvContest?.[party] ?? [];
+  const activeNames = csvNames.filter((name) => name !== monitored.withdrawnName);
+  let status: CandidateCheck["status"];
+  let name = activeNames[0] ?? monitored.replacementLabel ?? `${party} replacement`;
+
+  if (!csvContest || csvNames.length === 0) {
+    status = "missing";
+  } else if (csvNames.includes(monitored.withdrawnName ?? "")) {
+    status = "withdrawn_pending";
+    name = monitored.withdrawnName ?? name;
+  } else if (activeNames.length === 1) {
+    status = "csv_replacement";
+  } else {
+    status = "primary_unresolved";
+  }
+
+  return { name, party, status, csvNames };
+}
+
+function isResolvedCandidate(candidate: CandidateCheck): boolean {
+  return candidate.status === "match" || candidate.status === "csv_replacement";
 }

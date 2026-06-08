@@ -136,7 +136,9 @@ function toSeatVisual(
     priorMargin:      prior?.margin ?? null,
     priorTotalVotes:  prior?.totalVotes ?? null,
     seatStatus,
-    hasFeaturedCandidate: race.candidates.some((c) => isFeaturedCandidate(formatName(c.name))),
+    hasFeaturedCandidate: race.candidates.some((c) =>
+      isFeaturedCandidate(formatName(c.name), { gid: race.gid, party: c.party })
+    ),
     allCandidates: [...race.candidates]
       .sort((a, b) => {
         const partyOrder = (p: string) => p === "DEM" ? 0 : p === "REP" ? 1 : 2;
@@ -786,7 +788,7 @@ function BattlegroundSection({
                     <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {/* Party avatar — donkey logo for featured candidates, colored circle otherwise */}
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${circle.border}`, background: circle.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: circle.text, overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
-                        {isFeaturedCandidate(formatName(cand.name))
+                        {isFeaturedCandidate(formatName(cand.name), { gid: seat.gid, party: cand.party })
                           ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           : cand.party || "?"}
                       </div>

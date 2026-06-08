@@ -9,7 +9,7 @@
 import fs from "fs";
 import path from "path";
 import { parseRawFeed, summarizeRaces } from "../lib/parseResults";
-import { FEATURED_CANDIDATES } from "../lib/featuredCandidates";
+import { MONITORED_RACES, type MonitoredRace } from "../lib/featuredCandidates";
 import {
   GENERAL_ELECTION_DATE,
   CandidateContestLookup,
@@ -60,10 +60,6 @@ async function main() {
   // Build GID → race map
   const raceByGid = Object.fromEntries(stagingRaces.map((r) => [r.gid, r]));
 
-  // ── Build list of races to check ─────────────────────────────────────────────
-  // Only candidates with a GID assigned can be checked against staging
-  const trackedGids = FEATURED_CANDIDATES.filter((c) => c.gid).map((c) => c.gid!);
-
   console.log("─".repeat(72));
 
   let diffCount = 0;
@@ -71,7 +67,8 @@ async function main() {
   // ── Check Team Up NC races ────────────────────────────────────────────────
   console.log("\n TEAM UP NC TRACKED RACES\n");
 
-  for (const gid of trackedGids) {
+  for (const monitored of MONITORED_RACES) {
+    const gid = monitored.gid;
     const race = raceByGid[gid];
     if (!race) {
       console.log(`  ⚠  GID ${gid} — not found in staging file`);
@@ -89,7 +86,11 @@ async function main() {
       continue;
     }
 
-    for (const c of race.candidates) {
+    if (monitored.replacementParty) {
+      checkReplacementCandidate(monitored, csvContest);
+    }
+
+    for (const c of race.candidates.filter((c) => c.party !== monitored.replacementParty)) {
       checkCandidate(c.name, c.party, csvContest);
     }
     console.log();
@@ -163,6 +164,34 @@ async function main() {
     }
 
     console.log(`  ${party.padEnd(5)} ${stagingName.padEnd(32)} ${status}`);
+  }
+
+  function checkReplacementCandidate(
+    monitored: MonitoredRace,
+    csvContest: Record<string, Set<string>>,
+  ) {
+    const party = monitored.replacementParty!;
+    const partyNames = csvContest[party] ?? new Set<string>();
+    const csvNames = [...partyNames];
+    const activeNames = csvNames.filter((name) => name !== monitored.withdrawnName);
+    let name = activeNames[0] ?? monitored.replacementLabel ?? `${party} replacement`;
+    let status: string;
+
+    if (partyNames.size === 0) {
+      status = "⚠  no replacement candidate found in CSV yet";
+      diffCount++;
+    } else if (monitored.withdrawnName && partyNames.has(monitored.withdrawnName)) {
+      name = monitored.withdrawnName;
+      status = "⚠  withdrawn candidate still in CSV — waiting for replacement";
+      diffCount++;
+    } else if (activeNames.length === 1) {
+      status = "✓  replacement candidate in CSV";
+    } else {
+      status = `✓  in CSV — but PRIMARY unresolved (also filed: ${activeNames.slice(1).join(", ")})`;
+      diffCount++;
+    }
+
+    console.log(`  ${party.padEnd(5)} ${name.padEnd(32)} ${status}`);
   }
 }
 

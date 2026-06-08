@@ -39,16 +39,22 @@ function RaceRow({ race }: { race: RaceCheck }) {
       <div style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
         {race.candidates.map((c, i) => {
           const icon =
-            c.status === "match"             ? "✓" :
+            c.status === "match" || c.status === "csv_replacement" ? "✓" :
             c.status === "primary_unresolved" ? "⚠" :
+            c.status === "withdrawn_pending"  ? "⚠" :
             c.status === "name_mismatch"      ? "✗" : "?";
           const color =
-            c.status === "match"             ? C.green :
+            c.status === "match" || c.status === "csv_replacement" ? C.green :
             c.status === "primary_unresolved" ? C.amber :
+            c.status === "withdrawn_pending"  ? C.amber :
             C.red;
           const detail =
             c.status === "primary_unresolved"
               ? `primary unresolved — also filed: ${c.csvNames.filter((n) => n !== c.name).join(", ")}`
+              : c.status === "csv_replacement"
+              ? "official CSV replacement candidate"
+              : c.status === "withdrawn_pending"
+              ? "withdrawn candidate still in CSV; waiting for replacement"
               : c.status === "name_mismatch"
               ? `not in CSV — CSV has: ${c.csvNames.join(", ")}`
               : c.status === "missing"
