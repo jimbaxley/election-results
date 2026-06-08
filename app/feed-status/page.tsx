@@ -12,14 +12,15 @@ const C = {
   border:     "#e5e2e1",
   green:      "#15803d",
   amber:      "#b45309",
+  amberBg:    "#fef3c7",
   red:        "#b91c1c",
 } as const;
 
-function StatusDot({ ok, dim }: { ok: boolean; dim?: boolean }) {
+function StatusDot({ tone, dim }: { tone: "ok" | "warn" | "error"; dim?: boolean }) {
   return (
     <span style={{
       display: "inline-block", width: 10, height: 10, borderRadius: "50%",
-      background: dim ? C.outline : ok ? C.green : C.red,
+      background: dim ? C.outline : tone === "ok" ? C.green : tone === "warn" ? C.amber : C.red,
       flexShrink: 0, marginTop: 2,
     }} />
   );
@@ -27,11 +28,27 @@ function StatusDot({ ok, dim }: { ok: boolean; dim?: boolean }) {
 
 function RaceRow({ race }: { race: RaceCheck }) {
   const label = race.cnm.replace(/\s*\(VOTE FOR \d+\)/i, "");
+  const hasWithdrawalPending = race.candidates.some((c) => c.status === "withdrawn_pending");
+  const raceTone = race.primaryResolved ? "ok" : hasWithdrawalPending ? "warn" : "error";
   return (
     <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
-        <StatusDot ok={race.primaryResolved} />
+        <StatusDot tone={raceTone} />
         <span style={{ fontWeight: 700, fontSize: 13, color: C.primary }}>{label}</span>
+        {hasWithdrawalPending && (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 800,
+            color: C.amber,
+            background: C.amberBg,
+            border: `1px solid ${C.amber}30`,
+            borderRadius: 999,
+            padding: "2px 7px",
+            whiteSpace: "nowrap",
+          }}>
+            REPLACEMENT PENDING
+          </span>
+        )}
         <span style={{ fontSize: 11, color: C.outline, marginLeft: "auto", whiteSpace: "nowrap" }}>
           GID {race.gid}
         </span>
@@ -60,11 +77,32 @@ function RaceRow({ race }: { race: RaceCheck }) {
               : c.status === "missing"
               ? "no matching party in CSV"
               : "";
+          const statusLabel =
+            c.status === "withdrawn_pending"
+              ? "WITHDRAWN"
+              : c.status === "csv_replacement"
+              ? "REPLACEMENT"
+              : "";
           return (
-            <div key={i} style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "baseline" }}>
+            <div key={i} style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ color, fontWeight: 700, width: 12 }}>{icon}</span>
               <span style={{ color: C.outline, width: 36 }}>{c.party}</span>
-              <span style={{ color: C.primary }}>{c.name}</span>
+              <span style={{ color: C.primary, textDecoration: c.status === "withdrawn_pending" ? "line-through" : "none" }}>
+                {c.name}
+              </span>
+              {statusLabel && (
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color,
+                  background: c.status === "withdrawn_pending" ? C.amberBg : "#f0fdf4",
+                  borderRadius: 999,
+                  padding: "1px 6px",
+                  whiteSpace: "nowrap",
+                }}>
+                  {statusLabel}
+                </span>
+              )}
               {detail && <span style={{ color, fontStyle: "italic" }}> — {detail}</span>}
             </div>
           );
@@ -151,7 +189,7 @@ export default function FeedStatusPage() {
               borderRadius: 10, padding: "14px 18px", marginBottom: 24,
               display: "flex", alignItems: "center", gap: 10,
             }}>
-              <StatusDot ok={data.allClear} />
+              <StatusDot tone={data.allClear ? "ok" : data.candidateDataCurrent ? "warn" : "error"} />
               <span style={{ fontWeight: 800, fontSize: 15, color: data.allClear ? C.green : C.primary }}>
                 {statusText}
               </span>
@@ -163,7 +201,7 @@ export default function FeedStatusPage() {
                 NCSBE LIVE FEED
               </div>
               <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                <StatusDot ok={data.feedLive} />
+                <StatusDot tone={data.feedLive ? "ok" : "error"} />
                 <span style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>
                   {data.feedLive ? "Feed is live" : "Feed not yet available"}
                 </span>
