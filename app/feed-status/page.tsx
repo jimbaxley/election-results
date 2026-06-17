@@ -71,7 +71,7 @@ function RaceRow({ race }: { race: RaceCheck }) {
               : c.status === "csv_replacement"
               ? "official CSV replacement candidate"
               : c.status === "withdrawn_pending"
-              ? "withdrawn candidate still in CSV; waiting for replacement"
+              ? "CSV still lists withdrawn candidate; waiting for replacement"
               : c.status === "name_mismatch"
               ? `not in CSV — CSV has: ${c.csvNames.join(", ")}`
               : c.status === "missing"

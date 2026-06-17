@@ -178,15 +178,16 @@ function checkReplacementCandidate(
 ): CandidateCheck {
   const party = monitored.replacementParty!;
   const csvNames = csvContest?.[party] ?? [];
-  const activeNames = csvNames.filter((name) => name !== monitored.withdrawnName);
+  const withdrawnNames = csvNames.filter((name) => isWithdrawnCsvName(name, monitored.withdrawnName));
+  const activeNames = csvNames.filter((name) => !isWithdrawnCsvName(name, monitored.withdrawnName));
   let status: CandidateCheck["status"];
   let name = activeNames[0] ?? monitored.replacementLabel ?? `${party} replacement`;
 
   if (!csvContest || csvNames.length === 0) {
     status = "missing";
-  } else if (csvNames.includes(monitored.withdrawnName ?? "")) {
+  } else if (activeNames.length === 0 && withdrawnNames.length > 0) {
     status = "withdrawn_pending";
-    name = monitored.withdrawnName ?? name;
+    name = withdrawnNames[0];
   } else if (activeNames.length === 1) {
     status = "csv_replacement";
   } else {
@@ -194,6 +195,11 @@ function checkReplacementCandidate(
   }
 
   return { name, party, status, csvNames };
+}
+
+function isWithdrawnCsvName(name: string, withdrawnName?: string): boolean {
+  if (!withdrawnName) return /\bWITHDRAWN\b/i.test(name);
+  return name === withdrawnName || (name.startsWith(withdrawnName) && /\bWITHDRAWN\b/i.test(name));
 }
 
 function isResolvedCandidate(candidate: CandidateCheck): boolean {
