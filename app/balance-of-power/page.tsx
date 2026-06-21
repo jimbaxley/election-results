@@ -5,7 +5,7 @@ import { CHAMBER_CONFIG, COA_CONFIG, SC_CONFIG } from "../../lib/config";
 import type { RaceSummary } from "../../lib/parseResults";
 import { COMPETITIVE_THRESHOLD } from "../../lib/priorResults";
 import type { PriorSeat } from "../../lib/priorResults";
-import { isFeaturedCandidate } from "../../lib/featuredCandidates";
+import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
 
 const POLL_INTERVAL = 60_000;
 
@@ -136,9 +136,10 @@ function toSeatVisual(
     priorMargin:      prior?.margin ?? null,
     priorTotalVotes:  prior?.totalVotes ?? null,
     seatStatus,
-    hasFeaturedCandidate: race.candidates.some((c) =>
-      isFeaturedCandidate(formatName(c.name), { gid: race.gid, party: c.party })
-    ),
+    hasFeaturedCandidate: race.candidates.some((c) => {
+      const displayName = candidateDisplayName(formatName(c.name), { gid: race.gid, party: c.party });
+      return isFeaturedCandidate(displayName, { gid: race.gid, party: c.party });
+    }),
     allCandidates: [...race.candidates]
       .sort((a, b) => {
         const partyOrder = (p: string) => p === "DEM" ? 0 : p === "REP" ? 1 : 2;
@@ -784,18 +785,19 @@ function BattlegroundSection({
                   const isD      = cand.party === "DEM";
                   const barColor = isD ? C.primaryMid : C.secondary;
                   const circle   = isLeader ? leaderStyle : runnerUpCircle;
+                  const displayName = candidateDisplayName(formatName(cand.name), { gid: seat.gid, party: cand.party });
                   return (
                     <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {/* Party avatar — donkey logo for featured candidates, colored circle otherwise */}
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${circle.border}`, background: circle.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: circle.text, overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
-                        {isFeaturedCandidate(formatName(cand.name), { gid: seat.gid, party: cand.party })
+                        {isFeaturedCandidate(displayName, { gid: seat.gid, party: cand.party })
                           ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           : cand.party || "?"}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
-                            {formatName(cand.name)}{" "}
+                            {displayName}{" "}
                             <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
                           </span>
                           <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>
@@ -887,6 +889,7 @@ function JudicialBattlegroundSection({
             const isD = cand.party === "DEM";
             const barColor = isD ? C.primaryMid : C.secondary;
             const pctDisplay = cand.pct * 100;
+            const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, party: cand.party });
             return (
               <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline }}>
@@ -895,7 +898,7 @@ function JudicialBattlegroundSection({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
-                      {formatName(cand.name)}{" "}
+                      {displayName}{" "}
                       <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
                     </span>
                     <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>

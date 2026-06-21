@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { RaceSummary } from "../../lib/parseResults";
 import type { PriorSeat } from "../../lib/priorResults";
-import { isFeaturedCandidate } from "../../lib/featuredCandidates";
+import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
 
 // ─── Brand tokens (matches balance-of-power) ─────────────────────────────────
 const C = {
@@ -240,6 +240,7 @@ function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
           const isD      = cand.party === "DEM";
           const barColor = isD ? C.primaryMid : C.secondary;
           const circle   = isLeader ? leaderStyle : runnerUpCircle;
+          const displayName = candidateDisplayName(formatName(cand.name), { gid: seat.gid, party: cand.party });
           return (
             <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
@@ -253,14 +254,14 @@ function RaceWidget({ seat, source }: { seat: SeatVisual; source: Source }) {
                   overflow: "hidden",
                 }}
               >
-                {isFeaturedCandidate(formatName(cand.name), { gid: seat.gid, party: cand.party })
+                {isFeaturedCandidate(displayName, { gid: seat.gid, party: cand.party })
                   ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : cand.party || "?"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
-                    {formatName(cand.name)}{" "}
+                    {displayName}{" "}
                     <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
                   </span>
                   <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>

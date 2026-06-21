@@ -13,7 +13,7 @@ export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
   { lastName: "hopkins",        gid: "1215" },
   { lastName: "gailliard",      gid: "1313" },
   { lastName: "grafstein",      gid: "1315" },
-  { lastName: "cohn" },
+  { lastName: "cohn",           gid: "1212" },
   { lastName: "bradley",        gid: "1344" },
   { lastName: "safiyah jackson" },
 ];
@@ -30,15 +30,26 @@ export type MonitoredRace = {
  * Use replacementParty/withdrawnName when we want to keep monitoring a race
  * after a supported candidate withdraws and before the replacement is known.
  */
-export const MONITORED_RACES: MonitoredRace[] = [
+const EXPLICIT_MONITORED_RACES: MonitoredRace[] = [
   {
     gid: "1212",
     replacementParty: "DEM",
     withdrawnName: "Curtis McRae",
-    replacementLabel: "HD 32 Democratic nominee",
+    replacementLabel: "Bryan Cohn",
   },
-  ...FEATURED_CANDIDATES.filter((c): c is { lastName: string; gid: string } => Boolean(c.gid))
-    .map((c) => ({ gid: c.gid })),
+];
+
+const EXPLICIT_MONITORED_GIDS = new Set(EXPLICIT_MONITORED_RACES.map((race) => race.gid));
+
+function isMonitoredFeaturedCandidate(
+  candidate: { lastName: string; gid?: string },
+): candidate is { lastName: string; gid: string } {
+  return candidate.gid !== undefined && !EXPLICIT_MONITORED_GIDS.has(candidate.gid);
+}
+
+export const MONITORED_RACES: MonitoredRace[] = [
+  ...EXPLICIT_MONITORED_RACES,
+  ...FEATURED_CANDIDATES.filter(isMonitoredFeaturedCandidate).map((c) => ({ gid: c.gid })),
 ];
 
 export const FEATURED_LAST_NAMES: Set<string> = new Set(
@@ -47,6 +58,32 @@ export const FEATURED_LAST_NAMES: Set<string> = new Set(
 
 function normalizeToken(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function getMonitoredReplacement(
+  formattedName: string,
+  context?: { gid?: string; party?: string },
+): MonitoredRace | undefined {
+  if (!context?.gid || !context.party) return undefined;
+
+  const monitoredReplacement = MONITORED_RACES.find(
+    (race) => race.gid === context.gid && race.replacementParty === context.party,
+  );
+  if (!monitoredReplacement?.withdrawnName) return undefined;
+
+  const normalizedFull = normalizeToken(formattedName);
+  const isWithdrawnCandidate = normalizedFull.startsWith(
+    normalizeToken(monitoredReplacement.withdrawnName),
+  );
+
+  return isWithdrawnCandidate ? monitoredReplacement : undefined;
+}
+
+export function candidateDisplayName(
+  formattedName: string,
+  context?: { gid?: string; party?: string },
+): string {
+  return getMonitoredReplacement(formattedName, context)?.replacementLabel ?? formattedName;
 }
 
 /**
@@ -63,13 +100,7 @@ export function isFeaturedCandidate(
     const monitoredReplacement = MONITORED_RACES.find(
       (race) => race.gid === context.gid && race.replacementParty === context.party,
     );
-    const isWithdrawnCandidate = monitoredReplacement?.withdrawnName
-      ? normalizedFull.startsWith(normalizeToken(monitoredReplacement.withdrawnName))
-      : false;
-    if (
-      monitoredReplacement &&
-      !isWithdrawnCandidate
-    ) {
+    if (monitoredReplacement && !getMonitoredReplacement(formattedName, context)) {
       return true;
     }
   }
