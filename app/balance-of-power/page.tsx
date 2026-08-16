@@ -841,6 +841,166 @@ function BattlegroundSection({
   );
 }
 
+// ─── Generic race card (no flip/hold logic — used where there's no "prior seat" baseline) ──
+function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
+  const hasVotes = race.precincts.reporting > 0;
+  const leader = race.candidates[0];
+  const leaderParty = hasVotes ? (leader?.party ?? "") : "";
+
+  // Determine badge
+  const bdgColor = leaderParty === "DEM" ? C.primaryMid : leaderParty === "REP" ? C.secondary : C.outline;
+  const bdgBg    = leaderParty === "DEM" ? `${C.primaryMid}18` : leaderParty === "REP" ? `${C.secondary}18` : C.surfaceHigh;
+  const bdgLabel = hasVotes ? `${leaderParty} LEADING` : "RESULTS PENDING";
+
+  // Left border signals party leading
+  const flipBorder = leaderParty === "DEM"
+    ? `3px solid ${C.primaryMid}`
+    : leaderParty === "REP"
+      ? `3px solid ${C.secondary}`
+      : `1px solid ${C.outlineVariant}50`;
+
+  return (
+    <div className="race-card" style={{ background: C.surface, borderRadius: 12, borderLeft: flipBorder, borderRight: `1px solid ${C.outlineVariant}50`, borderTop: `1px solid ${C.outlineVariant}50`, borderBottom: `1px solid ${C.outlineVariant}50`, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}>
+      {/* Card header */}
+      <div style={{ padding: "10px 14px", background: C.surfaceLow, borderBottom: `1px solid ${C.outlineVariant}30`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.primary }}>{label}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 7px", background: bdgBg, color: bdgColor }}>
+            {bdgLabel}
+          </span>
+        </div>
+        <span style={{ fontSize: 10, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
+          {Math.round(race.precincts.pct * 100)}% Reporting
+        </span>
+      </div>
+
+      {/* Candidates */}
+      <div style={{ padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+        {race.candidates.map((cand) => {
+          const isD = cand.party === "DEM";
+          const barColor = isD ? C.primaryMid : C.secondary;
+          const pctDisplay = cand.pct * 100;
+          const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, party: cand.party });
+          return (
+            <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline }}>
+                {cand.party || "?"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
+                    {displayName}{" "}
+                    <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
+                  </span>
+                  <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>
+                    {pctDisplay > 0 ? `${pctDisplay.toFixed(1)}%` : "—"}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: C.surfaceTrack, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pctDisplay}%`, background: barColor, borderRadius: 3 }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {race.margin !== null && race.totalVotes > 0 && (
+          <div style={{ fontSize: 14, color: C.outline, fontWeight: 400, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
+            Margin: {Math.round(race.margin * race.totalVotes).toLocaleString()} votes | {(race.margin * 100).toFixed(2)}%
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Federal Races Section (US House + US Senate — races only, no balance-of-power bar) ──
+function FederalRacesSection({
+  usHouseRaces,
+  usSenateRaces,
+}: {
+  usHouseRaces: RaceSummary[];
+  usSenateRaces: RaceSummary[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (usHouseRaces.length === 0 && usSenateRaces.length === 0) return null;
+
+  function districtLabel(cnm: string): string {
+    const m = cnm.match(/DISTRICT\s+0*(\d+)/i);
+    return m ? `US House District ${m[1]}` : "US Senate";
+  }
+
+  const sortedHouse = [...usHouseRaces].sort(
+    (a, b) => extractDistrictNumber(a.cnm) - extractDistrictNumber(b.cnm),
+  );
+  const defaultHouse = sortedHouse.filter((r) => extractDistrictNumber(r.cnm) === 1);
+  const visibleHouse = expanded
+    ? sortedHouse
+    : defaultHouse.length > 0
+      ? defaultHouse
+      : sortedHouse.slice(0, 1);
+
+  return (
+    <section id="federal-races" style={{ marginBottom: 48 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, borderLeft: `4px solid ${C.secondary}`, paddingLeft: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>US House &amp; Senate</h2>
+          <p style={{ margin: "2px 0 0", fontSize: 14, color: C.outline, fontWeight: 500 }}>
+            North Carolina&apos;s congressional races
+          </p>
+        </div>
+      </div>
+
+      {usSenateRaces.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
+            US Senate
+          </div>
+          <div className="race-grid race-grid-federal" style={{ marginBottom: 32 }}>
+            {usSenateRaces.map((r) => (
+              <RaceResultCard key={r.gid} race={r} label={districtLabel(r.cnm)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {sortedHouse.length > 0 && (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline }}>
+              US House — {sortedHouse.length} district{sortedHouse.length !== 1 ? "s" : ""}
+            </div>
+            {sortedHouse.length > 1 && (
+              <button
+                onClick={() => setExpanded((e) => !e)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.primary,
+                  background: "transparent",
+                  border: `1px solid ${C.outlineVariant}`,
+                  borderRadius: 999,
+                  padding: "4px 12px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.03em",
+                }}
+              >
+                {expanded ? "Show District 1 only" : `Show all ${sortedHouse.length} districts`}
+              </button>
+            )}
+          </div>
+          <div className="race-grid race-grid-federal">
+            {visibleHouse.map((r) => (
+              <RaceResultCard key={r.gid} race={r} label={districtLabel(r.cnm)} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ─── Judicial Battleground Section ───────────────────────────────────────────
 function JudicialBattlegroundSection({
   coaRaces,
@@ -850,77 +1010,6 @@ function JudicialBattlegroundSection({
   scRaces: RaceSummary[];
 }) {
   if (coaRaces.length === 0 && scRaces.length === 0) return null;
-
-  function JudicialCard({ race, label }: { race: RaceSummary; label: string }) {
-    const hasVotes = race.precincts.reporting > 0;
-    const leader = race.candidates[0];
-    const leaderParty = hasVotes ? (leader?.party ?? "") : "";
-
-    // Determine badge
-    const bdgColor = leaderParty === "DEM" ? C.primaryMid : leaderParty === "REP" ? C.secondary : C.outline;
-    const bdgBg    = leaderParty === "DEM" ? `${C.primaryMid}18` : leaderParty === "REP" ? `${C.secondary}18` : C.surfaceHigh;
-    const bdgLabel = hasVotes ? `${leaderParty} LEADING` : "RESULTS PENDING";
-
-    // Left border signals party leading
-    const flipBorder = leaderParty === "DEM"
-      ? `3px solid ${C.primaryMid}`
-      : leaderParty === "REP"
-        ? `3px solid ${C.secondary}`
-        : `1px solid ${C.outlineVariant}50`;
-
-    return (
-      <div className="race-card" style={{ background: C.surface, borderRadius: 12, borderLeft: flipBorder, borderRight: `1px solid ${C.outlineVariant}50`, borderTop: `1px solid ${C.outlineVariant}50`, borderBottom: `1px solid ${C.outlineVariant}50`, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}>
-        {/* Card header */}
-        <div style={{ padding: "10px 14px", background: C.surfaceLow, borderBottom: `1px solid ${C.outlineVariant}30`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: C.primary }}>{label}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 7px", background: bdgBg, color: bdgColor }}>
-              {bdgLabel}
-            </span>
-          </div>
-          <span style={{ fontSize: 10, fontWeight: 600, color: C.outline, letterSpacing: "0.04em" }}>
-            {Math.round(race.precincts.pct * 100)}% Reporting
-          </span>
-        </div>
-
-        {/* Candidates */}
-        <div style={{ padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-          {race.candidates.map((cand) => {
-            const isD = cand.party === "DEM";
-            const barColor = isD ? C.primaryMid : C.secondary;
-            const pctDisplay = cand.pct * 100;
-            const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, party: cand.party });
-            return (
-              <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline }}>
-                  {cand.party || "?"}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.onBg }}>
-                      {displayName}{" "}
-                      <span style={{ fontWeight: 500, color: C.outline }}>({cand.party})</span>
-                    </span>
-                    <span style={{ color: barColor, flexShrink: 0, marginLeft: 6 }}>
-                      {pctDisplay > 0 ? `${pctDisplay.toFixed(1)}%` : "—"}
-                    </span>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 3, background: C.surfaceTrack, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${pctDisplay}%`, background: barColor, borderRadius: 3 }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {race.margin !== null && race.totalVotes > 0 && (
-            <div style={{ fontSize: 14, color: C.outline, fontWeight: 400, textAlign: "center", borderTop: `1px solid ${C.outlineVariant}30`, paddingTop: 8 }}>
-              Margin: {Math.round(race.margin * race.totalVotes).toLocaleString()} votes | {(race.margin * 100).toFixed(2)}%
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   function seatLabel(cnm: string, prefix: string): string {
     const m = cnm.match(/SEAT\s+0*(\d+)/i);
@@ -945,7 +1034,7 @@ function JudicialBattlegroundSection({
           </div>
           <div className="race-grid race-grid-judicial" style={{ marginBottom: 32 }}>
             {scRaces.map((r) => (
-              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "NCSC")} />
+              <RaceResultCard key={r.gid} race={r} label={seatLabel(r.cnm, "NCSC")} />
             ))}
           </div>
         </>
@@ -958,7 +1047,7 @@ function JudicialBattlegroundSection({
           </div>
           <div className="race-grid race-grid-judicial">
             {coaRaces.map((r) => (
-              <JudicialCard key={r.gid} race={r} label={seatLabel(r.cnm, "CoA")} />
+              <RaceResultCard key={r.gid} race={r} label={seatLabel(r.cnm, "CoA")} />
             ))}
           </div>
         </>
@@ -1007,11 +1096,13 @@ export default function BalanceOfPowerPage() {
     return () => clearInterval(interval);
   }, [source]);
 
-  const { senate, house, coaRaces, scRaces } = useMemo(() => ({
-    senate:   races.filter((r) => r.ogl === "NCS").map((r) => toSeatVisual(r, priorSeats)),
-    house:    races.filter((r) => r.ogl === "NCH").map((r) => toSeatVisual(r, priorSeats)),
-    coaRaces: races.filter((r) => r.ogl === "JUD" && r.cnm.includes("COURT OF APPEALS")),
-    scRaces:  races.filter((r) => r.ogl === "JUD" && r.cnm.includes("SUPREME COURT")),
+  const { senate, house, coaRaces, scRaces, usHouseRaces, usSenateRaces } = useMemo(() => ({
+    senate:       races.filter((r) => r.ogl === "NCS").map((r) => toSeatVisual(r, priorSeats)),
+    house:        races.filter((r) => r.ogl === "NCH").map((r) => toSeatVisual(r, priorSeats)),
+    coaRaces:     races.filter((r) => r.ogl === "JUD" && r.cnm.includes("COURT OF APPEALS")),
+    scRaces:      races.filter((r) => r.ogl === "JUD" && r.cnm.includes("SUPREME COURT")),
+    usHouseRaces: races.filter((r) => r.ogl === "FED" && r.cnm.includes("US HOUSE")),
+    usSenateRaces: races.filter((r) => r.ogl === "FED" && r.cnm.includes("US SENATE")),
   }), [races, priorSeats]);
 
   return (
@@ -1049,7 +1140,8 @@ export default function BalanceOfPowerPage() {
         }
         .race-grid-house,
         .race-grid-senate,
-        .race-grid-judicial { grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); }
+        .race-grid-judicial,
+        .race-grid-federal { grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); }
 
         /* Card hover */
         .race-card { transition: box-shadow 0.2s, transform 0.2s; cursor: default; }
@@ -1066,6 +1158,7 @@ export default function BalanceOfPowerPage() {
         {!loading && !error && (
           <>
             <SupermajorityHero senateSeats={senate} houseSeats={house} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} countdown={countdown} lastUpdated={lastUpdated} />
+            <FederalRacesSection usHouseRaces={usHouseRaces} usSenateRaces={usSenateRaces} />
             <BattlegroundSection chamber="house"  seats={house}  source={source} />
             <BattlegroundSection chamber="senate" seats={senate} source={source} />
             <JudicialBattlegroundSection coaRaces={coaRaces} scRaces={scRaces} />
