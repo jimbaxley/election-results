@@ -6,6 +6,7 @@ import type { RaceSummary } from "../../lib/parseResults";
 import { COMPETITIVE_THRESHOLD } from "../../lib/priorResults";
 import type { PriorSeat } from "../../lib/priorResults";
 import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
+import { candidatePhoto } from "../../lib/candidatePhotos";
 
 const POLL_INTERVAL = 60_000;
 
@@ -786,13 +787,16 @@ function BattlegroundSection({
                   const barColor = isD ? C.primaryMid : C.secondary;
                   const circle   = isLeader ? leaderStyle : runnerUpCircle;
                   const displayName = candidateDisplayName(formatName(cand.name), { gid: seat.gid, party: cand.party });
+                  const photo = candidatePhoto(displayName, { gid: seat.gid, party: cand.party });
                   return (
                     <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {/* Party avatar — donkey logo for featured candidates, colored circle otherwise */}
+                      {/* Party avatar — headshot when we have one, donkey logo for other featured candidates, colored circle otherwise */}
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${circle.border}`, background: circle.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: circle.text, overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
-                        {isFeaturedCandidate(displayName, { gid: seat.gid, party: cand.party })
-                          ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : cand.party || "?"}
+                        {photo
+                          ? <img src={photo} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : isFeaturedCandidate(displayName, { gid: seat.gid, party: cand.party })
+                            ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            : cand.party || "?"}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
@@ -881,10 +885,13 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
           const barColor = isD ? C.primaryMid : C.secondary;
           const pctDisplay = cand.pct * 100;
           const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, party: cand.party });
+          const photo = candidatePhoto(displayName, { gid: race.gid, party: cand.party });
           return (
             <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline }}>
-                {cand.party || "?"}
+              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline, overflow: "hidden" }}>
+                {photo
+                  ? <img src={photo} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : cand.party || "?"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
