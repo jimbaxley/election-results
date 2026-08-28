@@ -1070,7 +1070,7 @@ export default function BalanceOfPowerPage() {
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
-  const [source, setSource] = useState<Source>("2024");
+  const [source, setSource] = useState<Source>("2026-clean");
   const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
 
   useEffect(() => {

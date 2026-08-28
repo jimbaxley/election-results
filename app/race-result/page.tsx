@@ -344,7 +344,7 @@ function RaceResultPageContent() {
   const searchParams = useSearchParams();
   const districtParam = searchParams.get("district");
 
-  const [source, setSource] = useState<Source>("2024");
+  const [source, setSource] = useState<Source>("2026-clean");
   const [races, setRaces] = useState<RaceSummary[]>([]);
   const [priorSeats, setPriorSeats] = useState<Record<string, PriorSeat>>({});
   const [lastUpdated, setLastUpdated] = useState<string>("");
