@@ -6,6 +6,7 @@ import {
   summarizeRaces,
 } from "../../../lib/parseResults";
 import { buildPriorLookup } from "../../../lib/priorResults";
+import { federalCandidateRecords2026 } from "../../../lib/federalCandidates2026";
 
 export const revalidate = 60;
 
@@ -35,7 +36,15 @@ export async function GET(request: Request): Promise<Response> {
       priorFile = "prior_2022.json"; // compare 2024 against 2022 results
     }
 
-    const raw = parseRawFeed(text);
+    let raw = parseRawFeed(text);
+    if (source === "2026" || source === "2026-clean") {
+      // The simulated export was created before the general-election slate was
+      // complete. Replace its partial federal rows with the verified full slate.
+      raw = [
+        ...raw.filter((record) => record.ogl !== "FED"),
+        ...federalCandidateRecords2026(),
+      ];
+    }
     const tracked = raw.filter(isTrackedCandidateRace);
     const races = summarizeRaces(tracked);
 
