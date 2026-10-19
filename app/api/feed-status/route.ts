@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { parseRawFeed, summarizeRaces } from "../../../lib/parseResults";
 import { MONITORED_RACES, type MonitoredRace } from "../../../lib/featuredCandidates";
+import { RESULTS_FEED_URL } from "../../../lib/liveResults";
 import {
   GENERAL_ELECTION_DATE,
   buildCandidateContestLookup,
@@ -11,7 +12,6 @@ import {
 
 export const revalidate = 0;
 
-const FEED_URL = "https://er.ncsbe.gov/enr/20261103/data/results_0.txt";
 const CSV_URL =
   "https://s3.amazonaws.com/dl.ncsbe.gov/Elections/2026/Candidate%20Filing/Candidate_Listing_2026.csv";
 
@@ -46,7 +46,7 @@ export async function GET(): Promise<Response> {
   let feedLive = false;
   let feedHttpStatus = "";
   try {
-    const res = await fetch(FEED_URL, { method: "HEAD", cache: "no-store" });
+    const res = await fetch(RESULTS_FEED_URL, { method: "HEAD", cache: "no-store" });
     feedLive = res.ok;
     feedHttpStatus = `HTTP ${res.status}`;
   } catch {

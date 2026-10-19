@@ -7,6 +7,7 @@ import { COMPETITIVE_THRESHOLD } from "../../lib/priorResults";
 import type { PriorSeat } from "../../lib/priorResults";
 import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
 import { candidatePhoto } from "../../lib/candidatePhotos";
+import type { FeedStatus } from "../../lib/liveResults";
 
 const POLL_INTERVAL = 60_000;
 
@@ -34,12 +35,12 @@ const BTN = {
 
 type Source = "2024" | "2026" | "2026-clean";
 
-const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
-
 type ApiResponse = {
   races: RaceSummary[];
   priorSeats: Record<string, PriorSeat>;
-  updatedAt: string;
+  updatedAt: string | null;
+  feedStatus: FeedStatus;
+  feedNotice: string;
 };
 
 type SeatStatus = "FLIPPED" | "LEADING_FLIP" | "HOLD" | "OPEN";
@@ -138,8 +139,8 @@ function toSeatVisual(
     priorTotalVotes:  prior?.totalVotes ?? null,
     seatStatus,
     hasFeaturedCandidate: race.candidates.some((c) => {
-      const displayName = candidateDisplayName(formatName(c.name), { gid: race.gid, party: c.party });
-      return isFeaturedCandidate(displayName, { gid: race.gid, party: c.party });
+      const displayName = candidateDisplayName(formatName(c.name), { gid: race.gid, cnm: race.cnm, party: c.party });
+      return isFeaturedCandidate(displayName, { gid: race.gid, cnm: race.cnm, party: c.party });
     }),
     allCandidates: [...race.candidates]
       .sort((a, b) => {
@@ -337,6 +338,7 @@ function SupermajorityHero({
   onSourceChange,
   countdown,
   lastUpdated,
+  feedStatus,
 }: {
   senateSeats: SeatVisual[];
   houseSeats: SeatVisual[];
@@ -346,6 +348,7 @@ function SupermajorityHero({
   onSourceChange: (s: Source) => void;
   countdown: number;
   lastUpdated: string;
+  feedStatus: FeedStatus;
 }) {
   type ChamberKey = "senate" | "house";
 
@@ -562,16 +565,15 @@ function SupermajorityHero({
   const updatedTime = lastUpdated
     ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
-  const updatedDate = lastUpdated
-    ? new Date(lastUpdated).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
-    : null;
 
   // Subtitle under heading: NCSBE attribution + countdown
   const ncsbeSub = source === "2024"
     ? "NCSBE Data as of Nov 5, 2024"
     : updatedTime
-      ? `NCSBE Data as of ${updatedTime}${POLL_ACTIVE && source === "2026-clean" ? ` · Updating in ${countdown > 0 ? countdown + "s" : "…"}` : ""}`
-      : `NCSBE Data as of ${updatedDate ?? "Nov 3, 2026"}`;
+      ? `NCSBE Data fetched at ${updatedTime}${source === "2026-clean" ? ` · Checking in ${countdown > 0 ? countdown + "s" : "…"}` : ""}`
+      : feedStatus === "scheduled"
+        ? "Live updates begin Nov 1, 2026 at midnight Eastern"
+        : "Waiting for NCSBE results · Checking every 60 seconds";
 
   // Grey bar content: status summary inside the card
   const cardStatus = source === "2024" ? (
@@ -579,13 +581,15 @@ function SupermajorityHero({
       <span style={{ fontWeight: 800, fontSize: 11, color: statusColorLight, letterSpacing: "0.04em", textTransform: "uppercase", flexShrink: 0 }}>{statusLabel}</span>
       <span style={{ fontSize: 12, color: C.outline, fontWeight: 400 }}>{narrative()}</span>
     </>
-  ) : source === "2026-clean" && POLL_ACTIVE ? (
+  ) : source === "2026-clean" && feedStatus === "live" ? (
     <>
       <span style={{ background: C.secondary, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 999, padding: "2px 8px", letterSpacing: "0.07em", flexShrink: 0 }}>LIVE</span>
       <span style={{ fontSize: 12, color: C.outline }}>{countdown > 0 ? `Updating in ${countdown}s` : "Updating…"}</span>
     </>
   ) : source === "2026" ? (
     <span style={{ fontSize: 12, color: C.outline, fontStyle: "italic" }}>Preview mode · mock data with early returns</span>
+  ) : feedStatus === "unavailable" ? (
+    <span style={{ fontSize: 12, color: C.outline }}>Waiting for NCSBE · Retrying in {countdown}s</span>
   ) : (
     <span style={{ fontSize: 12, color: C.outline }}>Nov 3, 2026 · Results pending</span>
   );
@@ -785,15 +789,15 @@ function BattlegroundSection({
                   const isD      = cand.party === "DEM";
                   const barColor = isD ? C.primaryMid : C.secondary;
                   const circle   = isLeader ? leaderStyle : runnerUpCircle;
-                  const displayName = candidateDisplayName(formatName(cand.name), { gid: seat.gid, party: cand.party });
-                  const photo = candidatePhoto(displayName, { gid: seat.gid, party: cand.party });
+                  const displayName = candidateDisplayName(formatName(cand.name), { gid: seat.gid, cnm: seat.districtLabel, party: cand.party });
+                  const photo = candidatePhoto(displayName, { cnm: seat.districtLabel, party: cand.party });
                   return (
                     <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {/* Party avatar — headshot when we have one, donkey logo for other featured candidates, colored circle otherwise */}
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${circle.border}`, background: circle.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: circle.text, overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
                         {photo
                           ? <img src={photo} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : isFeaturedCandidate(displayName, { gid: seat.gid, party: cand.party })
+                          : isFeaturedCandidate(displayName, { gid: seat.gid, cnm: seat.districtLabel, party: cand.party })
                             ? <img src="/donkey-logo.png" alt="Team Up NC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             : cand.party || "?"}
                       </div>
@@ -883,8 +887,8 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
           const isD = cand.party === "DEM";
           const barColor = isD ? C.primaryMid : C.secondary;
           const pctDisplay = cand.pct * 100;
-          const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, party: cand.party });
-          const photo = candidatePhoto(displayName, { gid: race.gid, party: cand.party });
+          const displayName = candidateDisplayName(formatName(cand.name), { gid: race.gid, cnm: race.cnm, party: cand.party });
+          const photo = candidatePhoto(displayName, { cnm: race.cnm, party: cand.party });
           return (
             <div key={cand.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${C.outlineVariant}`, background: C.surfaceHigh, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: C.outline, overflow: "hidden" }}>
@@ -1070,36 +1074,52 @@ export default function BalanceOfPowerPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string>("");
   const [source, setSource] = useState<Source>("2026-clean");
+  const [feedStatus, setFeedStatus] = useState<FeedStatus>("scheduled");
   const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
 
   useEffect(() => {
-    if (!POLL_ACTIVE) return;
     const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
     return () => clearInterval(tick);
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    let hasLoadedResults = false;
     const fetchData = async () => {
       try {
-        const res = await fetch(`/api/results?source=${source}`);
+        const res = await fetch(`/api/results?source=${source}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
         const data = (await res.json()) as ApiResponse;
-        setRaces(data.races ?? []);
-        setPriorSeats(data.priorSeats ?? {});
-        setLastUpdated(data.updatedAt ?? "");
-        setError("");
+        if (disposed) return;
+        // An upstream outage must not reset results already on screen to zero.
+        if (data.feedStatus !== "unavailable" || !hasLoadedResults) {
+          setRaces(data.races ?? []);
+          setPriorSeats(data.priorSeats ?? {});
+          setLastUpdated(data.updatedAt ?? "");
+          hasLoadedResults = true;
+        }
+        setFeedStatus(data.feedStatus);
+        setError(data.feedNotice ?? "");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load live data");
+        if (disposed) return;
+        setFeedStatus("unavailable");
+        setError(`${err instanceof Error ? err.message : "Failed to load live data"}. Retrying automatically; any loaded results remain displayed.`);
       } finally {
-        setLoading(false);
-        setCountdown(POLL_INTERVAL / 1000);
+        if (!disposed) {
+          setLoading(false);
+          setCountdown(POLL_INTERVAL / 1000);
+        }
       }
     };
     setLoading(true);
+    setRaces([]);
+    setLastUpdated("");
+    setError("");
+    setFeedStatus("scheduled");
     fetchData();
-    if (!POLL_ACTIVE) return;
-    const interval = setInterval(fetchData, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    // Poll before the switch too so tabs left open cross Nov 1 automatically.
+    const interval = source === "2026-clean" ? setInterval(fetchData, POLL_INTERVAL) : undefined;
+    return () => { disposed = true; clearInterval(interval); };
   }, [source]);
 
   const { senate, house, coaRaces, scRaces, usHouseRaces, usSenateRaces } = useMemo(() => ({
@@ -1161,9 +1181,9 @@ export default function BalanceOfPowerPage() {
         {loading && <p style={{ color: C.outline, fontSize: 14 }}>Loading live race data…</p>}
         {error   && <p style={{ color: C.secondary, fontSize: 14 }}>{error}</p>}
 
-        {!loading && !error && (
+        {!loading && races.length > 0 && (
           <>
-            <SupermajorityHero senateSeats={senate} houseSeats={house} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} countdown={countdown} lastUpdated={lastUpdated} />
+            <SupermajorityHero senateSeats={senate} houseSeats={house} coaRaces={coaRaces} scRaces={scRaces} source={source} onSourceChange={setSource} countdown={countdown} lastUpdated={lastUpdated} feedStatus={feedStatus} />
             <FederalRacesSection usHouseRaces={usHouseRaces} usSenateRaces={usSenateRaces} />
             <BattlegroundSection chamber="house"  seats={house}  source={source} />
             <BattlegroundSection chamber="senate" seats={senate} source={source} />

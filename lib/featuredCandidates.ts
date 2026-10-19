@@ -1,3 +1,5 @@
+import { normalizeContestName } from "./candidateCsv";
+
 /**
  * Candidates endorsed / supported by Team Up NC.
  * - lastName: used to match the donkey logo on race cards (case-insensitive).
@@ -20,6 +22,7 @@ export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
 
 export type MonitoredRace = {
   gid: string;
+  cnm?: string;
   replacementParty?: string;
   withdrawnName?: string;
   replacementLabel?: string;
@@ -33,6 +36,7 @@ export type MonitoredRace = {
 const EXPLICIT_MONITORED_RACES: MonitoredRace[] = [
   {
     gid: "1212",
+    cnm: "NC HOUSE OF REPRESENTATIVES DISTRICT 32",
     replacementParty: "DEM",
     withdrawnName: "Curtis McRae",
     replacementLabel: "Bryan Cohn",
@@ -62,12 +66,12 @@ function normalizeToken(value: string): string {
 
 function getMonitoredReplacement(
   formattedName: string,
-  context?: { gid?: string; party?: string },
+  context?: { gid?: string; cnm?: string; party?: string },
 ): MonitoredRace | undefined {
   if (!context?.gid || !context.party) return undefined;
 
   const monitoredReplacement = MONITORED_RACES.find(
-    (race) => race.gid === context.gid && race.replacementParty === context.party,
+    (race) => (context.cnm ? race.cnm === normalizeContestName(context.cnm) : race.gid === context.gid) && race.replacementParty === context.party,
   );
   if (!monitoredReplacement?.withdrawnName) return undefined;
 
@@ -81,7 +85,7 @@ function getMonitoredReplacement(
 
 export function candidateDisplayName(
   formattedName: string,
-  context?: { gid?: string; party?: string },
+  context?: { gid?: string; cnm?: string; party?: string },
 ): string {
   return getMonitoredReplacement(formattedName, context)?.replacementLabel ?? formattedName;
 }
@@ -92,13 +96,13 @@ export function candidateDisplayName(
  */
 export function isFeaturedCandidate(
   formattedName: string,
-  context?: { gid?: string; party?: string },
+  context?: { gid?: string; cnm?: string; party?: string },
 ): boolean {
   const normalizedFull = normalizeToken(formattedName);
 
   if (context?.gid && context.party) {
     const monitoredReplacement = MONITORED_RACES.find(
-      (race) => race.gid === context.gid && race.replacementParty === context.party,
+      (race) => (context.cnm ? race.cnm === normalizeContestName(context.cnm) : race.gid === context.gid) && race.replacementParty === context.party,
     );
     if (monitoredReplacement && !getMonitoredReplacement(formattedName, context)) {
       return true;
