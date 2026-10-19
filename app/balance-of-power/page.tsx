@@ -592,7 +592,6 @@ function SupermajorityHero({
 
   const TABS: { value: Source; label: string }[] = [
     { value: "2026-clean", label: "Election Night" },
-    { value: "2026",       label: "2026 Preview"        },
     { value: "2024",       label: "2024 Results"   },
   ];
 

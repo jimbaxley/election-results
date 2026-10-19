@@ -14,7 +14,7 @@ const CANDIDATE_PHOTOS: Record<string, { lastName: string; party: string; photo:
   "1313": { lastName: "gailliard", party: "DEM", photo: "/Gailliard-ISO.png" }, // James D. Gailliard — SD-11
   "1315": { lastName: "grafstein", party: "DEM", photo: "/LG-ISO.png" },        // Lisa Grafstein — SD-13
   "1320": { lastName: "fatmi",     party: "DEM", photo: "/FATMI-Iso.png" },     // Haseeb Fatmi — SD-18
-  "1392": { lastName: "cooper",    party: "DEM", photo: "/Cooper.png" },        // Roy Cooper — US Senate
+  "1393": { lastName: "cooper",    party: "DEM", photo: "/Cooper.png" },        // Roy Cooper — US Senate
   "1379": { lastName: "davis",     party: "DEM", photo: "/ddavis.png" },        // Don Davis — US House District 1
   "2001": { lastName: "arrowood",  party: "DEM", photo: "/arrowood.png" },      // John S. Arrowood — CoA Seat 1
   "2002": { lastName: "hampson",   party: "DEM", photo: "/hampson.png" },       // Tobias (Toby) Hampson — CoA Seat 2
