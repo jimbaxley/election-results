@@ -114,6 +114,11 @@ export function isFeaturedCandidate(
     }
   }
 
+  // Featured candidates are all Team Up NC-supported Democrats, so a shared
+  // surname on another party's candidate (e.g. REP Lisa Stone Barnes vs. DEM
+  // LeVon Barnes) must not get the donkey.
+  if (context?.party && context.party !== "DEM") return false;
+
   for (const featured of FEATURED_LAST_NAMES) {
     if (normalizedFull === normalizeToken(featured)) return true;
   }

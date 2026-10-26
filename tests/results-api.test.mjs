@@ -119,6 +119,8 @@ test("avatars and featured races match contests despite changed official GIDs", 
   assert.equal(candidatePhoto("Someone Else", { cnm: record.cnm, party: "DEM" }), undefined);
   assert.equal(isFeaturedCandidate("Bryan K. Cohn", { gid: "1200", cnm: "NC HOUSE OF REPRESENTATIVES DISTRICT 032 (VOTE FOR 1)", party: "DEM" }), true);
   assert.equal(isFeaturedCandidate("Other Candidate", { gid: "1212", cnm: "NC HOUSE OF REPRESENTATIVES DISTRICT 044 (VOTE FOR 1)", party: "DEM" }), false);
+  assert.equal(isFeaturedCandidate("LeVon Barnes", { gid: "1244", cnm: "NC HOUSE OF REPRESENTATIVES DISTRICT 064 (VOTE FOR 1)", party: "DEM" }), true);
+  assert.equal(isFeaturedCandidate("Lisa Stone Barnes", { gid: "1313", cnm: "NC STATE SENATE DISTRICT 11 (VOTE FOR 1)", party: "REP" }), false);
 });
 
 test("official downloaded feed works through the full results API", {
