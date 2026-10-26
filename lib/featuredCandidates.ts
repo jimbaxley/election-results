@@ -7,6 +7,9 @@ import { normalizeContestName } from "./candidateCsv";
  * - gid: NCSBE race GID — add once confirmed from the live feed or staging file.
  */
 export const FEATURED_CANDIDATES: { lastName: string; gid?: string }[] = [
+  { lastName: "baltutis",       gid: "1243" },
+  { lastName: "barnes",         gid: "1244" },
+  { lastName: "blanton",        gid: "1327" },
   { lastName: "rivera",         gid: "1306" },
   { lastName: "speed",          gid: "1187" },
   { lastName: "fatmi",          gid: "1320" },

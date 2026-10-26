@@ -9,6 +9,9 @@ import { normalizeContestName } from "./candidateCsv";
  * Files live in /public — add the PNG there, then map it here.
  */
 const CANDIDATE_PHOTOS: Record<string, { lastName: string; party: string; photo: string }> = {
+  "NC HOUSE OF REPRESENTATIVES DISTRICT 63": { lastName: "baltutis", party: "DEM", photo: "/baltutis Background Removed.png" }, // Ian Baltutis — HD-63
+  "NC HOUSE OF REPRESENTATIVES DISTRICT 64": { lastName: "barnes", party: "DEM", photo: "/barnes Medium.png" }, // LeVon Barnes — HD-64
+  "NC STATE SENATE DISTRICT 25": { lastName: "blanton", party: "DEM", photo: "/blanton Background Removed.png" }, // Southey Blanton — SD-25
   "NC STATE SENATE DISTRICT 4": { lastName: "rivera", party: "DEM", photo: "/Jess_Rivera Background Removed.png" }, // Jess Rivera — SD-4
   "NC HOUSE OF REPRESENTATIVES DISTRICT 7": { lastName: "speed", party: "DEM", photo: "/SPEED-ISO.png" }, // Mark Speed — HD-7
   "NC HOUSE OF REPRESENTATIVES DISTRICT 24": { lastName: "pittman",   party: "DEM", photo: "/Pittman-ISO.png" },   // Dante Pittman — HD-24
