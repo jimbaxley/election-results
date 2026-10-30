@@ -25,6 +25,7 @@ const CANDIDATE_PHOTOS: Record<string, { lastName: string; party: string; photo:
   "NC STATE SENATE DISTRICT 18": { lastName: "fatmi",     party: "DEM", photo: "/FATMI-Iso.png" },     // Haseeb Fatmi — SD-18
   "US SENATE": { lastName: "cooper",    party: "DEM", photo: "/Cooper.png" },        // Roy Cooper — US Senate
   "US HOUSE OF REPRESENTATIVES DISTRICT 1": { lastName: "davis",     party: "DEM", photo: "/ddavis.png" },        // Don Davis — US House District 1
+  "US HOUSE OF REPRESENTATIVES DISTRICT 11": { lastName: "ager", party: "DEM", photo: "/ager.png" }, // Jamie Ager — US House District 11
   "NC COURT OF APPEALS JUDGE SEAT 01": { lastName: "arrowood",  party: "DEM", photo: "/arrowood.png" },      // John S. Arrowood — CoA Seat 1
   "NC COURT OF APPEALS JUDGE SEAT 02": { lastName: "hampson",   party: "DEM", photo: "/hampson.png" },       // Tobias (Toby) Hampson — CoA Seat 2
   "NC COURT OF APPEALS JUDGE SEAT 03": { lastName: "walczyk",   party: "DEM", photo: "/Walczyk.png" },       // Christine Marie Walczyk — CoA Seat 3

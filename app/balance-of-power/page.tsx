@@ -943,7 +943,7 @@ function FederalRacesSection({
   const sortedHouse = [...usHouseRaces].sort(
     (a, b) => extractDistrictNumber(a.cnm) - extractDistrictNumber(b.cnm),
   );
-  const defaultHouse = sortedHouse.filter((r) => extractDistrictNumber(r.cnm) === 1);
+  const defaultHouse = sortedHouse.filter((r) => [1, 11].includes(extractDistrictNumber(r.cnm)));
   const visibleHouse = expanded
     ? sortedHouse
     : defaultHouse.length > 0
@@ -996,7 +996,7 @@ function FederalRacesSection({
                   letterSpacing: "0.03em",
                 }}
               >
-                {expanded ? "Show District 1 only" : `Show all ${sortedHouse.length} districts`}
+                {expanded ? "Show featured districts" : `Show all ${sortedHouse.length} districts`}
               </button>
             )}
           </div>
