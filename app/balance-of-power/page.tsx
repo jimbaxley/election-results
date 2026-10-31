@@ -616,6 +616,7 @@ function SupermajorityHero({
           </div>
         </div>
 
+        <div className="ew-side" style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 8, flexShrink: 0 }}>
         {/* Tabs — segmented control, stacks vertically on mobile */}
         <div className="ew-tabs" style={{ border: `1px solid ${C.outlineVariant}`, borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
           {TABS.map(({ value, label }, i) => {
@@ -640,6 +641,8 @@ function SupermajorityHero({
               </button>
             );
           })}
+        </div>
+        <NationalResultsLink label="Live national results: watch.vote" />
         </div>
       </div>
 
@@ -923,6 +926,33 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
   );
 }
 
+// ─── National results link (watch.vote) ──────────────────────────────────────
+const NATIONAL_RESULTS_URL = "https://watch.vote/midterms/2026?view=results";
+
+function NationalResultsLink({ label = "National results on watch.vote" }: { label?: string }) {
+  return (
+    <a
+      href={NATIONAL_RESULTS_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        color: C.primary,
+        textDecoration: "none",
+        border: `1px solid ${C.outlineVariant}`,
+        borderRadius: 999,
+        padding: "4px 12px",
+        letterSpacing: "0.03em",
+        whiteSpace: "nowrap",
+        textAlign: "center",
+      }}
+    >
+      {label} ↗
+    </a>
+  );
+}
+
 // ─── Federal Races Section (US House + US Senate — races only, no balance-of-power bar) ──
 function FederalRacesSection({
   usHouseRaces,
@@ -963,8 +993,11 @@ function FederalRacesSection({
 
       {usSenateRaces.length > 0 && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline, marginBottom: 12 }}>
-            US Senate
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline }}>
+              US Senate
+            </div>
+            <NationalResultsLink label="National Senate results on watch.vote" />
           </div>
           <div className="race-grid race-grid-federal" style={{ marginBottom: 32 }}>
             {usSenateRaces.map((r) => (
@@ -980,6 +1013,8 @@ function FederalRacesSection({
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline }}>
               US House — {sortedHouse.length} district{sortedHouse.length !== 1 ? "s" : ""}
             </div>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <NationalResultsLink label="National House results on watch.vote" />
             {sortedHouse.length > 1 && (
               <button
                 onClick={() => setExpanded((e) => !e)}
@@ -999,6 +1034,7 @@ function FederalRacesSection({
                 {expanded ? "Show featured districts" : `Show all ${sortedHouse.length} districts`}
               </button>
             )}
+            </div>
           </div>
           <div className="race-grid race-grid-federal">
             {visibleHouse.map((r) => (
@@ -1155,6 +1191,7 @@ export default function BalanceOfPowerPage() {
         .ew-tab-btn { flex: 1; }
         @media (max-width: 560px) {
           .ew-header { flex-wrap: wrap; }
+          .ew-side { width: 100%; }
           .ew-tabs { width: 100%; }
           .ew-tab-btn { padding: 6px 8px !important; }
         }
@@ -1176,7 +1213,7 @@ export default function BalanceOfPowerPage() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 48px" }}>
         {/* Page title row */}
-        
+
 
         {loading && <p style={{ color: C.outline, fontSize: 14 }}>Loading live race data…</p>}
         {error   && <p style={{ color: C.secondary, fontSize: 14 }}>{error}</p>}
