@@ -642,7 +642,7 @@ function SupermajorityHero({
             );
           })}
         </div>
-        <NationalResultsLink label="Live national results: watch.vote" />
+        <NationalResultsLink label="National forecast: civicAPI" />
         </div>
       </div>
 
@@ -926,10 +926,10 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
   );
 }
 
-// ─── National results link (watch.vote) ──────────────────────────────────────
-const NATIONAL_RESULTS_URL = "https://watch.vote/midterms/2026?view=results";
+// ─── National forecast link (civicAPI) ───────────────────────────────────────
+const NATIONAL_RESULTS_URL = "https://civicapi.org/forecasts";
 
-function NationalResultsLink({ label = "National results on watch.vote" }: { label?: string }) {
+function NationalResultsLink({ label = "National forecast on civicAPI" }: { label?: string }) {
   return (
     <a
       href={NATIONAL_RESULTS_URL}
@@ -997,7 +997,7 @@ function FederalRacesSection({
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline }}>
               US Senate
             </div>
-            <NationalResultsLink label="National Senate results on watch.vote" />
+            <NationalResultsLink label="National Senate forecast on civicAPI" />
           </div>
           <div className="race-grid race-grid-federal" style={{ marginBottom: 32 }}>
             {usSenateRaces.map((r) => (
@@ -1014,7 +1014,7 @@ function FederalRacesSection({
               US House — {sortedHouse.length} district{sortedHouse.length !== 1 ? "s" : ""}
             </div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <NationalResultsLink label="National House results on watch.vote" />
+            <NationalResultsLink label="National House forecast on civicAPI" />
             {sortedHouse.length > 1 && (
               <button
                 onClick={() => setExpanded((e) => !e)}
