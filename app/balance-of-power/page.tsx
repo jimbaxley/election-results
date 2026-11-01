@@ -642,7 +642,7 @@ function SupermajorityHero({
             );
           })}
         </div>
-        <NationalResultsLink label="National forecast: civicAPI" />
+        <NationalResultsLink label="National results: civicAPI" />
         </div>
       </div>
 
@@ -927,7 +927,7 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
 }
 
 // ─── National forecast link (civicAPI) ───────────────────────────────────────
-const NATIONAL_RESULTS_URL = "https://civicapi.org/forecasts";
+const NATIONAL_RESULTS_URL = "https://civicapi.org/decision-2026";
 
 function NationalResultsLink({ label = "National forecast on civicAPI" }: { label?: string }) {
   return (
