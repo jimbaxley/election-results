@@ -926,10 +926,10 @@ function RaceResultCard({ race, label }: { race: RaceSummary; label: string }) {
   );
 }
 
-// ─── National forecast link (civicAPI) ───────────────────────────────────────
+// ─── National results link (civicAPI) ─────────────────────────────────────────
 const NATIONAL_RESULTS_URL = "https://civicapi.org/decision-2026";
 
-function NationalResultsLink({ label = "National forecast on civicAPI" }: { label?: string }) {
+function NationalResultsLink({ label = "National results on civicAPI" }: { label?: string }) {
   return (
     <a
       href={NATIONAL_RESULTS_URL}
@@ -997,7 +997,7 @@ function FederalRacesSection({
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: C.outline }}>
               US Senate
             </div>
-            <NationalResultsLink label="National Senate forecast on civicAPI" />
+            <NationalResultsLink label="National Senate results on civicAPI" />
           </div>
           <div className="race-grid race-grid-federal" style={{ marginBottom: 32 }}>
             {usSenateRaces.map((r) => (
@@ -1014,7 +1014,7 @@ function FederalRacesSection({
               US House — {sortedHouse.length} district{sortedHouse.length !== 1 ? "s" : ""}
             </div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <NationalResultsLink label="National House forecast on civicAPI" />
+            <NationalResultsLink label="National House results on civicAPI" />
             {sortedHouse.length > 1 && (
               <button
                 onClick={() => setExpanded((e) => !e)}
