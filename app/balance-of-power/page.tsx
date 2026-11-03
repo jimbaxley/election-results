@@ -77,6 +77,18 @@ function raceAnchor(prefix: string, gid: string): string {
   return `${prefix}-race-${String(gid).replace(/[^A-Za-z0-9_-]/g, "-")}`;
 }
 
+// Scroll to a race card and flash it. Uses scrollIntoView rather than a plain #hash jump because
+// this page is embedded in a full-height Framer iframe: hash jumps only scroll the iframe's own
+// (non-scrolling) document, while scrollIntoView also scrolls the parent page.
+function jumpToRace(e: React.MouseEvent, id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  e.preventDefault();
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("race-flash");
+  window.setTimeout(() => el.classList.remove("race-flash"), 2500);
+}
+
 function isBattlegroundSeat(seat: SeatVisual): boolean {
   if (seat.hasFeaturedCandidate) return true;
   // Flips always show — the change itself is the story regardless of margin.
@@ -287,7 +299,7 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
         {demCircles.map((c, i) => {
           const s = circleStyle(c, "dem", i);
           return (
-            <a key={c.label} href={c.href} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+            <a key={c.label} href={c.href} onClick={(e) => jumpToRace(e, c.href.slice(1))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
               {c.label}
             </a>
           );
@@ -295,7 +307,7 @@ function JudicialBar({ coaRaces, scRaces, source }: { coaRaces: RaceSummary[]; s
         {repCircles.map((c, i) => {
           const s = circleStyle(c, "rep", i);
           return (
-            <a key={c.label} href={c.href} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+            <a key={c.label} href={c.href} onClick={(e) => jumpToRace(e, c.href.slice(1))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: s.left, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: s.bg, border: `2px solid ${s.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: s.color, zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
               {c.label}
             </a>
           );
@@ -537,25 +549,25 @@ function SupermajorityHero({
 
               {/* Featured candidate circles — DEM tight (closest to line) */}
               {demTight.map((seat: SeatVisual, i: number) => (
-                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} onClick={(e) => jumpToRace(e, raceAnchor(chamberKey, seat.gid))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
                   {extractDistrictNumber(seat.districtLabel)}
                 </a>
               ))}
               {/* Featured candidate circles — DEM leading (further left) */}
               {demLeading.map((seat: SeatVisual, i: number) => (
-                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#dcfce7", border: "2px solid #15803d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#15803d", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} onClick={(e) => jumpToRace(e, raceAnchor(chamberKey, seat.gid))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% - ${demOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#dcfce7", border: "2px solid #15803d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#15803d", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
                   {extractDistrictNumber(seat.districtLabel)}
                 </a>
               ))}
               {/* Featured candidate circles — REP tight (closest to line) */}
               {repTight.map((seat: SeatVisual, i: number) => (
-                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} onClick={(e) => jumpToRace(e, raceAnchor(chamberKey, seat.gid))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("tight", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fef9c3", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
                   {extractDistrictNumber(seat.districtLabel)}
                 </a>
               ))}
               {/* Featured candidate circles — REP leading (further right) */}
               {repLeading.map((seat: SeatVisual, i: number) => (
-                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fff", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                <a key={seat.gid} href={`#${raceAnchor(chamberKey, seat.gid)}`} onClick={(e) => jumpToRace(e, raceAnchor(chamberKey, seat.gid))} style={{ textDecoration: "none", position: "absolute", top: "50%", transform: "translateY(-50%)", left: `calc(${stats.superPct}% + ${repOffset("leading", i)}px)`, width: CIRCLE, height: CIRCLE, borderRadius: "50%", background: "#fff", border: "2px solid #a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: "#854d0e", zIndex: 20, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
                   {extractDistrictNumber(seat.districtLabel)}
                 </a>
               ))}
@@ -1123,8 +1135,11 @@ export default function BalanceOfPowerPage() {
     return () => clearInterval(tick);
   }, []);
 
+  // Direct visits only: when embedded in the Framer page, the Framer page provides its own back-to-top
+  // (a fixed button here would sit at the bottom of the full-height iframe, not the visitor's viewport).
   const [showBackToTop, setShowBackToTop] = useState(false);
   useEffect(() => {
+    if (window.self !== window.top) return;
     const onScroll = () => setShowBackToTop(window.scrollY > 400);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -1224,7 +1239,7 @@ export default function BalanceOfPowerPage() {
         .race-card:hover { box-shadow: 0 8px 24px rgba(4,37,103,0.13) !important; transform: translateY(-2px); }
         /* Landing spot for the bar circles: keep the card clear of the top edge and highlight it */
         .race-card { scroll-margin-top: 24px; }
-        .race-card:target { box-shadow: 0 0 0 3px #A6266E, 0 8px 24px rgba(4,37,103,0.13) !important; }
+        .race-card:target, .race-card.race-flash { box-shadow: 0 0 0 3px #A6266E, 0 8px 24px rgba(4,37,103,0.13) !important; }
       `}</style>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 48px" }}>
