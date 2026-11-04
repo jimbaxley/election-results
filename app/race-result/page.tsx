@@ -24,7 +24,7 @@ const C = {
 type Source = "2024" | "2026-clean";
 
 const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
-const POLL_INTERVAL = 60_000;
+const POLL_INTERVAL = 3_600_000; // once an hour
 
 type ApiResponse = {
   races: RaceSummary[];

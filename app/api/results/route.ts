@@ -37,7 +37,7 @@ export async function GET(request: Request): Promise<Response> {
         } catch (error) {
           console.error("NCSBE live results unavailable:", error);
           feedStatus = "unavailable";
-          feedNotice = "NCSBE results are unavailable. Showing the last loaded results; retrying every 60 seconds.";
+          feedNotice = "NCSBE results are unavailable. Showing the last loaded results; retrying every hour.";
         }
       }
     } else if (source === "2026") {

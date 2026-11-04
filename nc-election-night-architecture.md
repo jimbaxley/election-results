@@ -161,7 +161,7 @@ Response shape:
 const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
 ```
 - Before November 1, 2026: fully static — no polling, no countdown
-- On/after November 1: polls every 60 seconds, shows countdown timer
+- On/after November 1: polls once an hour, shows countdown timer (minutes)
 
 ### Header ("Election Watch")
 

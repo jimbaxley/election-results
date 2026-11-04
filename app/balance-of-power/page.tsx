@@ -9,7 +9,12 @@ import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCan
 import { candidatePhoto } from "../../lib/candidatePhotos";
 import type { FeedStatus } from "../../lib/liveResults";
 
-const POLL_INTERVAL = 60_000;
+const POLL_INTERVAL = 3_600_000; // once an hour
+
+function formatCountdown(sec: number): string {
+  if (sec >= 60) return `${Math.ceil(sec / 60)} min`;
+  return `${sec}s`;
+}
 
 // ─── Brand tokens (Team Up NC) ───────────────────────────────────────────────
 const C = {
@@ -587,10 +592,10 @@ function SupermajorityHero({
   const ncsbeSub = source === "2024"
     ? "NCSBE Data as of Nov 5, 2024"
     : updatedTime
-      ? `NCSBE Data fetched at ${updatedTime}${source === "2026-clean" ? ` · Checking in ${countdown > 0 ? countdown + "s" : "…"}` : ""}`
+      ? `NCSBE Data fetched at ${updatedTime}${source === "2026-clean" ? ` · Checking in ${countdown > 0 ? formatCountdown(countdown) : "…"}` : ""}`
       : feedStatus === "scheduled"
         ? "Live updates begin Nov 1, 2026 at midnight Eastern"
-        : "Waiting for NCSBE results · Checking every 60 seconds";
+        : "Waiting for NCSBE results · Checking every hour";
 
   // Grey bar content: status summary inside the card
   const cardStatus = source === "2024" ? (
@@ -601,12 +606,12 @@ function SupermajorityHero({
   ) : source === "2026-clean" && feedStatus === "live" ? (
     <>
       <span style={{ background: C.secondary, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 999, padding: "2px 8px", letterSpacing: "0.07em", flexShrink: 0 }}>LIVE</span>
-      <span style={{ fontSize: 12, color: C.outline }}>{countdown > 0 ? `Updating in ${countdown}s` : "Updating…"}</span>
+      <span style={{ fontSize: 12, color: C.outline }}>{countdown > 0 ? `Updating in ${formatCountdown(countdown)}` : "Updating…"}</span>
     </>
   ) : source === "2026" ? (
     <span style={{ fontSize: 12, color: C.outline, fontStyle: "italic" }}>Preview mode · mock data with early returns</span>
   ) : feedStatus === "unavailable" ? (
-    <span style={{ fontSize: 12, color: C.outline }}>Waiting for NCSBE · Retrying in {countdown}s</span>
+    <span style={{ fontSize: 12, color: C.outline }}>Waiting for NCSBE · Retrying in {formatCountdown(countdown)}</span>
   ) : (
     <span style={{ fontSize: 12, color: C.outline }}>Nov 3, 2026 · Results pending</span>
   );
