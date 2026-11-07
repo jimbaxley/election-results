@@ -8,9 +8,11 @@ import {
 } from "../../../lib/parseResults";
 import { buildPriorLookup } from "../../../lib/priorResults";
 import { federalCandidateRecords2026 } from "../../../lib/federalCandidates2026";
-import { fetchLiveResults, liveResultsEnabled, type FeedStatus } from "../../../lib/liveResults";
+import { liveResultsEnabled, type FeedStatus } from "../../../lib/liveResults";
+import { fetchCachedLiveResults } from "../../../lib/cachedLiveResults";
 
-export const dynamic = "force-dynamic";
+// Keep the response dynamic (including the Nov 1 gate), while the explicit
+// Data Cache in fetchCachedLiveResults shares the upstream file across visitors.
 export const revalidate = 0;
 
 export async function GET(request: Request): Promise<Response> {
@@ -23,6 +25,7 @@ export async function GET(request: Request): Promise<Response> {
     let feedStatus: FeedStatus = "scheduled";
     let feedNotice = "";
     let liveRecords: RawRecord[] | undefined;
+    let liveFetchedAt: string | undefined;
 
     if (source === "2026-clean") {
       // Keep the complete zero-vote slate until the scheduled switch, or while
@@ -32,7 +35,9 @@ export async function GET(request: Request): Promise<Response> {
       priorFile = "prior_2024.json";
       if (liveResultsEnabled()) {
         try {
-          liveRecords = await fetchLiveResults();
+          const live = await fetchCachedLiveResults();
+          liveRecords = live.records;
+          liveFetchedAt = live.fetchedAt;
           feedStatus = "live";
         } catch (error) {
           console.error("NCSBE live results unavailable:", error);
@@ -75,7 +80,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return Response.json({
       races, priorSeats, source, feedStatus, feedNotice,
-      updatedAt: source === "2026-clean" && feedStatus !== "live" ? null : new Date().toISOString(),
+      updatedAt: source === "2026-clean" ? liveFetchedAt ?? null : new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return Response.json(

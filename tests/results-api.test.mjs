@@ -8,6 +8,16 @@ import ts from "typescript";
 // Exercise the actual route and shared TypeScript modules without a dev server.
 const require = createRequire(import.meta.url);
 const modules = new Map();
+const cachedCalls = [];
+let cacheSettings;
+const nextCache = {
+  unstable_cache(fn, keys, settings) {
+    cacheSettings = { keys, ...settings };
+    // Unit tests exercise the real fetch/parse path on each request. Production
+    // cache reuse is checked against the built production server, not a fake cache here.
+    return (...args) => { cachedCalls.push(args); return fn(...args); };
+  },
+};
 function loadTs(filename) {
   filename = path.resolve(filename);
   if (modules.has(filename)) return modules.get(filename).exports;
@@ -17,7 +27,7 @@ function loadTs(filename) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   new Function("require", "exports", "module", compiled)(
-    (id) => id.startsWith(".") ? loadTs(path.resolve(path.dirname(filename), `${id}.ts`)) : require(id),
+    (id) => id === "next/cache" ? nextCache : id.startsWith(".") ? loadTs(path.resolve(path.dirname(filename), `${id}.ts`)) : require(id),
     mod.exports, mod,
   );
   return mod.exports;
@@ -32,6 +42,7 @@ async function requestAt(time, fetcher, source = "2026-clean") {
   const originalFetch = globalThis.fetch;
   globalThis.Date = class extends RealDate {
     constructor(...args) { super(...(args.length ? args : [time])); }
+    static now() { return new RealDate(time).getTime(); }
   };
   globalThis.fetch = fetcher;
   try {
@@ -64,7 +75,7 @@ test("before the switch, show the complete zero-vote slate without fetching NCSB
   assert.ok(data.races.some((race) => race.candidates.some((c) => c.name === "Roy Cooper")));
 });
 
-test("at the switch, fetch official results uncached and preserve federal votes and race IDs", async () => {
+test("at the switch, fetch official results through the hourly cache and preserve federal votes and race IDs", async () => {
   const records = [record, { ...record, bnm: "Michael Whatley", pty: "REP", vct: "8000", pct: "0.4" }];
   const data = await requestAt("2026-11-01T04:00:00Z", async (url, options) => {
     assert.equal(url, RESULTS_FEED_URL);
@@ -86,12 +97,24 @@ test("a missing feed returns an explicit unavailable status and no false live ti
   const data = await requestAt("2026-11-01T04:00:00Z", async () => new Response("Not found", { status: 404 }));
   assert.equal(data.feedStatus, "unavailable");
   assert.equal(data.updatedAt, null);
-  assert.match(data.feedNotice, /retrying every 60 seconds/i);
+  assert.match(data.feedNotice, /retrying every hour/i);
   assert.ok(data.races.every((race) => race.totalVotes === 0));
   // The next request automatically recovers once the feed becomes available.
   const recovered = await requestAt("2026-11-01T04:01:00Z", async () => Response.json([record]));
   assert.equal(recovered.feedStatus, "live");
   assert.equal(recovered.races[0].totalVotes, 12345);
+});
+
+test("server cache lasts one hour and uses a new key at the hour boundary", async () => {
+  assert.equal(cacheSettings.revalidate, 3600);
+  assert.ok(cacheSettings.keys.includes(RESULTS_FEED_URL));
+  const fetcher = async () => Response.json([record]);
+  await requestAt("2026-11-07T14:01:00Z", fetcher);
+  const first = cachedCalls.at(-1)[0];
+  await requestAt("2026-11-07T14:59:59Z", fetcher);
+  assert.equal(cachedCalls.at(-1)[0], first);
+  await requestAt("2026-11-07T15:00:00Z", fetcher);
+  assert.equal(cachedCalls.at(-1)[0], first + 1);
 });
 
 test("reject empty, malformed, non-race, and invalid numeric feed data", async () => {
