@@ -10,8 +10,10 @@ import { buildPriorLookup } from "../../../lib/priorResults";
 import { federalCandidateRecords2026 } from "../../../lib/federalCandidates2026";
 import { liveResultsEnabled, type FeedStatus } from "../../../lib/liveResults";
 import { fetchCachedLiveResults } from "../../../lib/cachedLiveResults";
+import { resultsAreFrozen } from "../../../lib/resultsSchedule";
+import snapshot from "../../../data/ncsbe-2026-snapshot.json";
 
-// Keep the response dynamic (including the Nov 1 gate), while the explicit
+// Keep the response dynamic for the live and freeze dates, while the explicit
 // Data Cache in fetchCachedLiveResults shares the upstream file across visitors.
 export const revalidate = 0;
 
@@ -33,7 +35,12 @@ export async function GET(request: Request): Promise<Response> {
       const stagingPath = path.join(process.cwd(), "tests", "staging_2026_clean.json");
       text = fs.readFileSync(stagingPath, "utf-8");
       priorFile = "prior_2024.json";
-      if (liveResultsEnabled()) {
+      if (resultsAreFrozen()) {
+        const snapshotPath = path.join(process.cwd(), "data", "ncsbe-2026-snapshot.txt");
+        liveRecords = parseRawFeed(fs.readFileSync(snapshotPath, "utf-8"));
+        liveFetchedAt = snapshot.fetchedAt;
+        feedStatus = "frozen";
+      } else if (liveResultsEnabled()) {
         try {
           const live = await fetchCachedLiveResults();
           liveRecords = live.records;
@@ -42,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
         } catch (error) {
           console.error("NCSBE live results unavailable:", error);
           feedStatus = "unavailable";
-          feedNotice = "NCSBE results are unavailable. Showing the last loaded results; retrying every hour.";
+          feedNotice = "NCSBE results are unavailable. The next automatic check is tomorrow.";
         }
       }
     } else if (source === "2026") {

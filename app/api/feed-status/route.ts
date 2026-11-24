@@ -3,6 +3,7 @@ import path from "path";
 import { parseRawFeed, summarizeRaces } from "../../../lib/parseResults";
 import { MONITORED_RACES, type MonitoredRace } from "../../../lib/featuredCandidates";
 import { RESULTS_FEED_URL } from "../../../lib/liveResults";
+import { resultsAreFrozen } from "../../../lib/resultsSchedule";
 import {
   GENERAL_ELECTION_DATE,
   buildCandidateContestLookup,
@@ -42,6 +43,10 @@ export type FeedStatusResponse = {
 };
 
 export async function GET(): Promise<Response> {
+  if (resultsAreFrozen()) {
+    return Response.json({ error: "Election feed checks ended on November 30, 2026." }, { status: 410 });
+  }
+
   // ── 1. Check NCSBE live feed ──────────────────────────────────────────────
   let feedLive = false;
   let feedHttpStatus = "";

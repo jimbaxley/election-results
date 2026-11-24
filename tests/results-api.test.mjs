@@ -27,12 +27,19 @@ function loadTs(filename) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   new Function("require", "exports", "module", compiled)(
-    (id) => id === "next/cache" ? nextCache : id.startsWith(".") ? loadTs(path.resolve(path.dirname(filename), `${id}.ts`)) : require(id),
+    (id) => {
+      if (id === "next/cache") return nextCache;
+      if (!id.startsWith(".")) return require(id);
+      const resolved = path.resolve(path.dirname(filename), id);
+      return id.endsWith(".json") ? require(resolved) : loadTs(`${resolved}.ts`);
+    },
     mod.exports, mod,
   );
   return mod.exports;
 }
 const { GET } = loadTs("app/api/results/route.ts");
+const { GET: checkFeed } = loadTs("app/api/feed-status/route.ts");
+const { GET: notify } = loadTs("app/api/daily-check/route.ts");
 const { liveResultsEnabled, fetchLiveResults, RESULTS_FEED_URL } = loadTs("lib/liveResults.ts");
 const { candidatePhoto } = loadTs("lib/candidatePhotos.ts");
 const { isFeaturedCandidate } = loadTs("lib/featuredCandidates.ts");
@@ -75,7 +82,7 @@ test("before the switch, show the complete zero-vote slate without fetching NCSB
   assert.ok(data.races.some((race) => race.candidates.some((c) => c.name === "Roy Cooper")));
 });
 
-test("at the switch, fetch official results through the hourly cache and preserve federal votes and race IDs", async () => {
+test("at the switch, fetch official results through the daily cache and preserve federal votes and race IDs", async () => {
   const records = [record, { ...record, bnm: "Michael Whatley", pty: "REP", vct: "8000", pct: "0.4" }];
   const data = await requestAt("2026-11-01T04:00:00Z", async (url, options) => {
     assert.equal(url, RESULTS_FEED_URL);
@@ -97,7 +104,7 @@ test("a missing feed returns an explicit unavailable status and no false live ti
   const data = await requestAt("2026-11-01T04:00:00Z", async () => new Response("Not found", { status: 404 }));
   assert.equal(data.feedStatus, "unavailable");
   assert.equal(data.updatedAt, null);
-  assert.match(data.feedNotice, /retrying every hour/i);
+  assert.match(data.feedNotice, /next automatic check is tomorrow/i);
   assert.ok(data.races.every((race) => race.totalVotes === 0));
   // The next request automatically recovers once the feed becomes available.
   const recovered = await requestAt("2026-11-01T04:01:00Z", async () => Response.json([record]));
@@ -105,16 +112,39 @@ test("a missing feed returns an explicit unavailable status and no false live ti
   assert.equal(recovered.races[0].totalVotes, 12345);
 });
 
-test("server cache lasts one hour and uses a new key at the hour boundary", async () => {
-  assert.equal(cacheSettings.revalidate, 3600);
+test("server cache lasts one day and uses a new key at midnight Eastern", async () => {
+  assert.equal(cacheSettings.revalidate, 86400);
   assert.ok(cacheSettings.keys.includes(RESULTS_FEED_URL));
   const fetcher = async () => Response.json([record]);
-  await requestAt("2026-11-07T14:01:00Z", fetcher);
+  await requestAt("2026-11-07T05:01:00Z", fetcher);
   const first = cachedCalls.at(-1)[0];
-  await requestAt("2026-11-07T14:59:59Z", fetcher);
+  await requestAt("2026-11-08T04:59:59Z", fetcher);
   assert.equal(cachedCalls.at(-1)[0], first);
-  await requestAt("2026-11-07T15:00:00Z", fetcher);
-  assert.equal(cachedCalls.at(-1)[0], first + 1);
+  await requestAt("2026-11-08T05:00:00Z", fetcher);
+  assert.notEqual(cachedCalls.at(-1)[0], first);
+});
+
+test("at midnight Eastern on November 30, serve the saved results and stop checks and notifications", async () => {
+  const before = await requestAt("2026-11-30T04:59:59.999Z", async () => Response.json([record]));
+  assert.equal(before.feedStatus, "live");
+
+  const noFetch = () => assert.fail("No upstream requests after the freeze");
+  const data = await requestAt("2026-11-30T05:00:00Z", noFetch);
+  assert.equal(data.feedStatus, "frozen");
+  assert.equal(data.updatedAt, require("../data/ncsbe-2026-snapshot.json").fetchedAt);
+  assert.ok(data.races.some((race) => race.totalVotes > 0));
+
+  const originalNow = Date.now;
+  const originalFetch = globalThis.fetch;
+  Date.now = () => Date.parse("2026-11-30T05:00:00Z");
+  globalThis.fetch = noFetch;
+  try {
+    assert.equal((await checkFeed()).status, 410);
+    assert.equal((await notify()).status, 204);
+  } finally {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("reject empty, malformed, non-race, and invalid numeric feed data", async () => {

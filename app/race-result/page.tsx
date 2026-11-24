@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import type { RaceSummary } from "../../lib/parseResults";
 import type { PriorSeat } from "../../lib/priorResults";
 import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
+import type { FeedStatus } from "../../lib/liveResults";
+import { FEED_REFRESH_SECONDS } from "../../lib/resultsSchedule";
 
 // ─── Brand tokens (matches balance-of-power) ─────────────────────────────────
 const C = {
@@ -23,13 +25,13 @@ const C = {
 
 type Source = "2024" | "2026-clean";
 
-const POLL_ACTIVE = new Date() >= new Date("2026-11-01T00:00:00");
-const POLL_INTERVAL = 3_600_000; // once an hour
+const POLL_INTERVAL = FEED_REFRESH_SECONDS * 1_000;
 
 type ApiResponse = {
   races: RaceSummary[];
   priorSeats: Record<string, PriorSeat>;
   updatedAt: string;
+  feedStatus: FeedStatus;
 };
 
 type SeatStatus = "FLIPPED" | "LEADING_FLIP" | "HOLD" | "OPEN";
@@ -348,32 +350,37 @@ function RaceResultPageContent() {
   const [races, setRaces] = useState<RaceSummary[]>([]);
   const [priorSeats, setPriorSeats] = useState<Record<string, PriorSeat>>({});
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [frozen, setFrozen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let disposed = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
     const fetchData = async () => {
       try {
         const res = await fetch(`/api/results?source=${source}`);
         if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
         const data = (await res.json()) as ApiResponse;
+        if (disposed) return;
+        if (data.feedStatus === "frozen") clearInterval(interval);
+        setFrozen(data.feedStatus === "frozen");
         setRaces(data.races ?? []);
         setPriorSeats(data.priorSeats ?? {});
         setLastUpdated(data.updatedAt ?? "");
         setError("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch results");
+        if (!disposed) setError(err instanceof Error ? err.message : "Failed to fetch results");
       } finally {
-        setLoading(false);
+        if (!disposed) setLoading(false);
       }
     };
 
     setLoading(true);
     fetchData();
 
-    if (!POLL_ACTIVE) return;
-    const interval = setInterval(fetchData, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    if (source === "2026-clean") interval = setInterval(fetchData, POLL_INTERVAL);
+    return () => { disposed = true; clearInterval(interval); };
   }, [source]);
 
   const race = districtParam ? findRaceByDistrict(races, districtParam) : undefined;
@@ -428,7 +435,7 @@ function RaceResultPageContent() {
         </div>
         {lastUpdated && (
           <span style={{ fontSize: 10, color: C.outline }}>
-            {source === "2024" ? "2024 Final Results" : `Updated ${new Date(lastUpdated).toLocaleTimeString()}`}
+            {source === "2024" ? "2024 Final Results" : `${frozen ? "Results snapshot" : "Updated"} ${new Date(lastUpdated).toLocaleString()}`}
           </span>
         )}
       </div>

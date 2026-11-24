@@ -1,0 +1,73 @@
+name: Freeze 2026 election results
+
+on:
+  schedule:
+    # The second slot covers a missed or failed run. Success disables the workflow.
+    - cron: "17 5,15 30 11 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: freeze-2026-results
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the freeze date
+        id: date
+        run: echo "eastern=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.date.outputs.eastern == '2026-11-30'
+        with:
+          ref: main
+
+      - name: Check whether the snapshot is already frozen
+        if: steps.date.outputs.eastern == '2026-11-30'
+        id: snapshot
+        run: |
+          frozen=$(node -p "Boolean(require('./data/ncsbe-2026-snapshot.json').frozen)")
+          echo "frozen=$frozen" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: steps.snapshot.outputs.frozen == 'false'
+        with:
+          node-version: 22
+
+      - name: Capture and validate the official results
+        if: steps.snapshot.outputs.frozen == 'false'
+        run: |
+          npm ci
+          snapshot="$RUNNER_TEMP/ncsbe-2026-snapshot.txt"
+          curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 60 \
+            https://er.ncsbe.gov/enr/20261103/data/results_0.txt -o "$snapshot"
+          fetched_at=$(date -u +%FT%TZ)
+          perl -pe 's/\r\n?/\n/g' "$snapshot" > data/ncsbe-2026-snapshot.txt
+          NCSBE_FEED_FIXTURE="$PWD/data/ncsbe-2026-snapshot.txt" npm test
+          printf '{\n  "fetchedAt": "%s",\n  "frozen": true\n}\n' "$fetched_at" > data/ncsbe-2026-snapshot.json
+
+      - name: Publish the snapshot and remove the notification cron
+        if: steps.snapshot.outputs.frozen == 'false'
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const config = require("./vercel.json");
+            config.crons = config.crons.filter(({ path }) => path !== "/api/daily-check");
+            fs.writeFileSync("vercel.json", JSON.stringify(config, null, 2) + "\n");
+          '
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ncsbe-2026-snapshot.txt data/ncsbe-2026-snapshot.json vercel.json
+          git commit --author="Jim Baxley <jimbaxley@users.noreply.github.com>" -m "Freeze November 30 election results"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Disable the completed freeze schedule
+        if: steps.date.outputs.eastern == '2026-11-30'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable freeze-results.yml

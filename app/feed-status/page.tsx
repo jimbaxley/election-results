@@ -116,12 +116,18 @@ export default function FeedStatusPage() {
   const [data, setData] = useState<FeedStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checksEnded, setChecksEnded] = useState(false);
 
   const check = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/feed-status");
+      if (res.status === 410) {
+        setChecksEnded(true);
+        setData(null);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
@@ -152,7 +158,7 @@ export default function FeedStatusPage() {
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.primary }}>
             Election Feed Status
           </h1>
-          <button
+          {!checksEnded && <button
             onClick={check}
             disabled={loading}
             style={{
@@ -162,8 +168,10 @@ export default function FeedStatusPage() {
             }}
           >
             {loading ? "Checking…" : "Refresh"}
-          </button>
+          </button>}
         </div>
+
+        {checksEnded && <p>Election feed checks ended on November 30, 2026.</p>}
 
         {error && (
           <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: 12, marginBottom: 16, color: C.red, fontSize: 13 }}>

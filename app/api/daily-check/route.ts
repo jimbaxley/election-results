@@ -1,9 +1,12 @@
 import { GET as getFeedStatus } from "../feed-status/route";
 import type { FeedStatusResponse } from "../feed-status/route";
+import { resultsAreFrozen } from "../../../lib/resultsSchedule";
 
 export const revalidate = 0;
 
 export async function GET(): Promise<Response> {
+  if (resultsAreFrozen()) return new Response(null, { status: 204 });
+
   const webhookUrl = process.env.CODA_WEBHOOK_URL;
   const apiToken   = process.env.CODA_API_TOKEN;
 
@@ -13,6 +16,7 @@ export async function GET(): Promise<Response> {
 
   // Run the feed status check
   const statusRes = await getFeedStatus();
+  if (!statusRes.ok) return statusRes;
   const data: FeedStatusResponse = await statusRes.json();
 
   // Build a human-readable summary
@@ -58,6 +62,7 @@ export async function GET(): Promise<Response> {
   };
 
   // POST to Coda webhook
+  if (resultsAreFrozen()) return new Response(null, { status: 204 });
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (apiToken) headers["Authorization"] = `Bearer ${apiToken}`;
 

@@ -8,10 +8,12 @@ import type { PriorSeat } from "../../lib/priorResults";
 import { candidateDisplayName, isFeaturedCandidate } from "../../lib/featuredCandidates";
 import { candidatePhoto } from "../../lib/candidatePhotos";
 import type { FeedStatus } from "../../lib/liveResults";
+import { FEED_REFRESH_SECONDS } from "../../lib/resultsSchedule";
 
-const POLL_INTERVAL = 3_600_000; // once an hour
+const POLL_INTERVAL = FEED_REFRESH_SECONDS * 1_000;
 
 function formatCountdown(sec: number): string {
+  if (sec >= 3600) return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
   if (sec >= 60) return `${Math.ceil(sec / 60)} min`;
   return `${sec}s`;
 }
@@ -585,17 +587,19 @@ function SupermajorityHero({
   }
 
   const updatedTime = lastUpdated
-    ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(lastUpdated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
 
   // Subtitle under heading: NCSBE attribution + countdown
   const ncsbeSub = source === "2024"
     ? "NCSBE Data as of Nov 5, 2024"
+    : feedStatus === "frozen"
+      ? `NCSBE results snapshot · ${updatedTime}`
     : updatedTime
-      ? `NCSBE Data fetched at ${updatedTime}${source === "2026-clean" ? ` · Checking in ${countdown > 0 ? formatCountdown(countdown) : "…"}` : ""}`
+      ? `NCSBE Data fetched ${updatedTime}${source === "2026-clean" ? ` · Checking in ${countdown > 0 ? formatCountdown(countdown) : "…"}` : ""}`
       : feedStatus === "scheduled"
         ? "Live updates begin Nov 1, 2026 at midnight Eastern"
-        : "Waiting for NCSBE results · Checking every hour";
+        : "Waiting for NCSBE results · Checking daily";
 
   // Grey bar content: status summary inside the card
   const cardStatus = source === "2024" ? (
@@ -610,6 +614,8 @@ function SupermajorityHero({
     </>
   ) : source === "2026" ? (
     <span style={{ fontSize: 12, color: C.outline, fontStyle: "italic" }}>Preview mode · mock data with early returns</span>
+  ) : feedStatus === "frozen" ? (
+    <span style={{ fontSize: 12, color: C.outline }}>Automatic updates ended November 30, 2026</span>
   ) : feedStatus === "unavailable" ? (
     <span style={{ fontSize: 12, color: C.outline }}>Waiting for NCSBE · Retrying in {formatCountdown(countdown)}</span>
   ) : (
@@ -1136,9 +1142,10 @@ export default function BalanceOfPowerPage() {
   const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
 
   useEffect(() => {
+    if (source !== "2026-clean" || feedStatus === "frozen") return;
     const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
     return () => clearInterval(tick);
-  }, []);
+  }, [source, feedStatus]);
 
   // Direct visits only: when embedded in the Framer page, the Framer page provides its own back-to-top
   // (a fixed button here would sit at the bottom of the full-height iframe, not the visitor's viewport).
@@ -1154,12 +1161,14 @@ export default function BalanceOfPowerPage() {
   useEffect(() => {
     let disposed = false;
     let hasLoadedResults = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
     const fetchData = async () => {
       try {
         const res = await fetch(`/api/results?source=${source}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to load results (${res.status})`);
         const data = (await res.json()) as ApiResponse;
         if (disposed) return;
+        if (data.feedStatus === "frozen") clearInterval(interval);
         // An upstream outage must not reset results already on screen to zero.
         if (data.feedStatus !== "unavailable" || !hasLoadedResults) {
           setRaces(data.races ?? []);
@@ -1187,7 +1196,7 @@ export default function BalanceOfPowerPage() {
     setFeedStatus("scheduled");
     fetchData();
     // Poll before the switch too so tabs left open cross Nov 1 automatically.
-    const interval = source === "2026-clean" ? setInterval(fetchData, POLL_INTERVAL) : undefined;
+    interval = source === "2026-clean" ? setInterval(fetchData, POLL_INTERVAL) : undefined;
     return () => { disposed = true; clearInterval(interval); };
   }, [source]);
 

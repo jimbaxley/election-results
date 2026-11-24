@@ -3,7 +3,7 @@ import { isTrackedCandidateRace, parseRawFeed, type RawRecord } from "./parseRes
 // November 1 is still daylight saving time in North Carolina.
 export const LIVE_START = "2026-11-01T00:00:00-04:00";
 export const RESULTS_FEED_URL = "https://er.ncsbe.gov/enr/20261103/data/results_0.txt";
-export type FeedStatus = "scheduled" | "live" | "unavailable";
+export type FeedStatus = "scheduled" | "live" | "unavailable" | "frozen";
 
 export function liveResultsEnabled(now = new Date()): boolean {
   return now.getTime() >= Date.parse(LIVE_START);
